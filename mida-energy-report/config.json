@@ -7,6 +7,9 @@
   "startup": "application",
   "boot": "auto",
   "init": false,
+  "privileged": ["SYS_ADMIN", "SYS_RAWIO"],
+  "full_access": true,
+  "apparmor": false,
   "image": "ghcr.io/mida-energy/mida-energy-report-{arch}",
   "ports": {
     "5000/tcp": 5000
