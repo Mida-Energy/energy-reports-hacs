@@ -28,7 +28,10 @@ COPY report_generator/ /app/report_generator/
 COPY app_addon.py /app/app.py
 
 # Copy s6 service
-COPY --chmod=755 rootfs/etc/services.d/mida-report/run /etc/services.d/mida-report/run
+COPY rootfs /
+
+# Make sure run script is executable
+RUN chmod +x /etc/services.d/mida-report/run
 
 # Set working directory
 WORKDIR /app
