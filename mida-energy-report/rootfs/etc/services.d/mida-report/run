@@ -1,0 +1,17 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting Mida Energy Report Generator..."
+
+DATA_PATH=$(bashio::config 'data_path')
+AUTO_EXPORT=$(bashio::config 'auto_export_enabled')
+EXPORT_INTERVAL=$(bashio::config 'export_interval_hours')
+
+mkdir -p "${DATA_PATH}"
+mkdir -p /app/reports/generale
+
+export DATA_PATH="${DATA_PATH}"
+export AUTO_EXPORT="${AUTO_EXPORT}"
+export EXPORT_INTERVAL="${EXPORT_INTERVAL}"
+
+bashio::log.info "Starting API server on port 5000..."
+cd /app
+exec gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 300 --access-logfile - app:app

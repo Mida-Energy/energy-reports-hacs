@@ -1,6 +1,6 @@
 {
   "name": "Mida Energy Report Generator",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "slug": "mida-energy-report",
   "description": "Generate PDF energy reports from Shelly EM data",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
