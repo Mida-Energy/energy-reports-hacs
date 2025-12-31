@@ -44,12 +44,15 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Install yq
+        run: pip install yq
+
       - name: Set build variables
         id: vars
         run: |
           echo "platform=linux/arm64" >> $GITHUB_OUTPUT
           echo "arch=aarch64" >> $GITHUB_OUTPUT
-          BASE=$(jq -r '.build_from.aarch64' mida-energy-report/build.yaml)
+          BASE=$(yq -r '.build_from.aarch64' mida-energy-report/build.yaml)
           if [ "$BASE" == "null" ]; then
             BASE="ghcr.io/home-assistant/aarch64-base-python:3.11-alpine3.18"
           fi
