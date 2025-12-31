@@ -52,6 +52,9 @@ jobs:
         run: |
           echo "platform=linux/arm64" >> $GITHUB_OUTPUT
           echo "arch=aarch64" >> $GITHUB_OUTPUT
+          # Convert owner to lowercase for Docker registry
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner=$OWNER_LOWER" >> $GITHUB_OUTPUT
           BASE=$(yq -r '.build_from.aarch64' mida-energy-report/build.yaml)
           if [ "$BASE" == "null" ]; then
             BASE="ghcr.io/home-assistant/aarch64-base-python:3.11-alpine3.18"
@@ -66,8 +69,8 @@ jobs:
           platforms: ${{ steps.vars.outputs.platform }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/mida-energy-report-${{ steps.vars.outputs.arch }}:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/mida-energy-report-${{ steps.vars.outputs.arch }}:latest
+            ghcr.io/${{ steps.vars.outputs.owner }}/mida-energy-report-${{ steps.vars.outputs.arch }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ steps.vars.outputs.owner }}/mida-energy-report-${{ steps.vars.outputs.arch }}:latest
           build-args: |
             BUILD_FROM=${{ steps.vars.outputs.base }}
             BUILD_VERSION=${{ steps.version.outputs.version }}
