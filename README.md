@@ -17,7 +17,7 @@ Generate professional PDF energy reports from your Shelly EM data directly in Ho
 
 1. Go to **Settings** → **Add-ons** → **Add-on Store**
 2. Click **⋮** (top right) → **Repositories**
-3. Add: `https://github.com/Mida-Energy/report-generator`
+3. Add: `https://github.com/Mida-Energy/energy-reports`
 4. Click **Add** → **Close**
 
 ### Step 2: Install the Add-on
