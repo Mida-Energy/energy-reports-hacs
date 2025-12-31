@@ -70,12 +70,17 @@ class ShellyDataCollector:
     def collect_and_save(self):
         """Collect data from all entities and save to CSV"""
         try:
+            logger.info("=" * 60)
+            logger.info("Starting data collection from Shelly devices...")
+            logger.info("=" * 60)
+            
             # Collect data from all entities
             data_row = {
                 'timestamp': datetime.now().isoformat()
             }
             
             for entity_id in self.entity_ids:
+                logger.info(f"Collecting data from: {entity_id}")
                 state_data = self.get_entity_state(entity_id)
                 if state_data:
                     # Extract friendly name and value
@@ -85,10 +90,14 @@ class ShellyDataCollector:
                     # Try to convert to float
                     try:
                         value = float(value)
+                        logger.info(f"  ✓ {friendly_name}: {value}")
                     except:
                         value = 0.0
+                        logger.warning(f"  ⚠ {friendly_name}: Cannot convert to float, using 0.0")
                     
                     data_row[friendly_name] = value
+                else:
+                    logger.error(f"  ✗ Failed to get data from {entity_id}")
             
             # Check if file exists to determine if we need headers
             file_exists = self.csv_file.exists()
@@ -98,32 +107,52 @@ class ShellyDataCollector:
                 writer = csv.DictWriter(f, fieldnames=data_row.keys())
                 if not file_exists:
                     writer.writeheader()
+                    logger.info(f"Created new CSV file: {self.csv_file}")
                 writer.writerow(data_row)
             
-            logger.info(f"Data collected and saved: {len(data_row)-1} entities")
+            logger.info("=" * 60)
+            logger.info(f"✓ Data collected successfully: {len(data_row)-1} entities saved to {self.csv_file}")
+            logger.info("=" * 60)
             
         except Exception as e:
-            logger.error(f"Error collecting data: {e}", exc_info=True)
+            logger.error("=" * 60)
+            logger.error(f"✗ Error collecting data: {e}", exc_info=True)
+            logger.error("=" * 60)
     
     def start_collection(self):
         """Start background data collection"""
         self.running = True
-        logger.info(f"Starting data collection every {self.interval} seconds for entities: {self.entity_ids}")
+        logger.info("=" * 60)
+        logger.info("BACKGROUND DATA COLLECTION STARTED")
+        logger.info(f"Collection interval: {self.interval} seconds ({self.interval/3600} hours)")
+        logger.info(f"Monitoring entities: {self.entity_ids}")
+        logger.info(f"CSV output: {self.csv_file}")
+        logger.info("=" * 60)
         
         while self.running and not stop_collection:
             self.collect_and_save()
+            logger.info(f"Next collection in {self.interval} seconds...")
             time.sleep(self.interval)
         
+        logger.info("=" * 60)
         logger.info("Data collection stopped")
+        logger.info("=" * 60)
 
 
 def start_background_collection():
     """Start background data collection thread"""
     global collection_thread
     
+    logger.info("=" * 60)
+    logger.info("Initializing background data collection...")
+    logger.info("=" * 60)
+    
     # Read configuration
     auto_export = os.getenv('AUTO_EXPORT', 'true').lower() == 'true'
     interval_hours = int(os.getenv('EXPORT_INTERVAL', '1'))
+    
+    logger.info(f"Auto-export enabled: {auto_export}")
+    logger.info(f"Export interval: {interval_hours} hours")
     
     # For now, we'll auto-discover Shelly entities
     # In a future version, this could be configurable
@@ -133,19 +162,30 @@ def start_background_collection():
         collector = ShellyDataCollector(entity_ids, interval_seconds=interval_hours * 3600)
         collection_thread = threading.Thread(target=collector.start_collection, daemon=True)
         collection_thread.start()
-        logger.info("Background data collection started")
+        logger.info("=" * 60)
+        logger.info("✓ Background data collection thread started successfully")
+        logger.info("=" * 60)
     else:
-        logger.info("Auto-collection disabled or no Shelly entities found")
+        logger.warning("=" * 60)
+        if not auto_export:
+            logger.warning("⚠ Auto-collection is DISABLED in configuration")
+        else:
+            logger.warning("⚠ No Shelly entities found - collection cannot start")
+        logger.warning("=" * 60)
 
 
 def discover_shelly_entities():
     """Discover Shelly power/energy entities from Home Assistant"""
     try:
+        logger.info("=" * 60)
+        logger.info("Discovering Shelly entities from Home Assistant...")
+        logger.info("=" * 60)
+        
         url = f"{HA_API_URL}/states"
         response = requests.get(url, headers=HEADERS, timeout=10)
         
         if response.status_code != 200:
-            logger.error(f"Failed to get states: {response.status_code}")
+            logger.error(f"✗ Failed to get states from HA API: {response.status_code}")
             return []
         
         all_states = response.json()
@@ -156,12 +196,17 @@ def discover_shelly_entities():
             entity_id = state.get('entity_id', '')
             if 'shelly' in entity_id.lower() and any(x in entity_id for x in ['power', 'energy']):
                 shelly_entities.append(entity_id)
+                logger.info(f"  ✓ Found: {entity_id}")
         
-        logger.info(f"Discovered {len(shelly_entities)} Shelly entities: {shelly_entities}")
+        logger.info("=" * 60)
+        logger.info(f"✓ Discovery complete: {len(shelly_entities)} Shelly entities found")
+        logger.info("=" * 60)
         return shelly_entities
         
     except Exception as e:
-        logger.error(f"Error discovering Shelly entities: {e}")
+        logger.error("=" * 60)
+        logger.error(f"✗ Error discovering Shelly entities: {e}")
+        logger.error("=" * 60)
         return []
 
 
