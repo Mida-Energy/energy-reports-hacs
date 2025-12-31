@@ -27,12 +27,12 @@ WORKDIR /
 COPY report_generator/ /app/report_generator/
 COPY app_addon.py /app/app.py
 
-# Copy s6 service files
-COPY rootfs /
+# Copy s6 service files - be specific to avoid overwriting base image files
+COPY rootfs/etc/services.d/mida-report /etc/services.d/mida-report
 
 # Make s6 scripts executable
-RUN chmod a+x /etc/services.d/mida-report/run \
-    && chmod a+x /etc/services.d/mida-report/finish
+RUN chmod +x /etc/services.d/mida-report/run \
+    && chmod +x /etc/services.d/mida-report/finish
 
 # Set working directory
 WORKDIR /app
