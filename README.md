@@ -1,13 +1,14 @@
-# 🚀 Mida Energy Report Generator - Home Assistant Add-on
+# 🚀 Energy Reports - Home Assistant Add-on
 
 Generate professional PDF energy reports from your Shelly EM data directly in Home Assistant!
 
 ## 📋 What it does
 
-- **Collects Shelly EM data** automatically from your sensors
+- **Auto-discovers Shelly devices** and collects data automatically
 - **Generates PDF reports** with charts, statistics, and insights  
 - **One-click download** from Home Assistant dashboard
 - **Professional reports** with daily and historical analysis
+- **Background data collection** with configurable intervals
 
 ---
 
@@ -22,7 +23,7 @@ Generate professional PDF energy reports from your Shelly EM data directly in Ho
 
 ### Step 2: Install the Add-on
 
-1. Find **"Mida Energy Report Generator"** in the store
+1. Find **"Energy Reports"** in the store
 2. Click **Install**
 3. Wait for installation to complete
 

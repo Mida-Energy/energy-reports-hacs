@@ -1,8 +1,8 @@
 {
-  "name": "Mida Energy Report Generator",
+  "name": "Energy Reports",
   "version": "1.0.6",
-  "slug": "mida-energy-report",
-  "description": "Generate PDF energy reports from Shelly EM data",
+  "slug": "energy-reports",
+  "description": "Generate PDF energy reports from Shelly EM data with automatic data collection",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "application",
   "boot": "auto",
@@ -18,8 +18,8 @@
     "5000/tcp": "Web interface and API"
   },
   "webui": "http://[HOST]:[PORT:5000]",
-  "panel_icon": "mdi:file-pdf-box",
-  "panel_title": "Mida Energy Reports",
+  "panel_icon": "mdi:chart-line",
+  "panel_title": "Energy Reports",
   "map": [
     "config:rw",
     "share:rw",
