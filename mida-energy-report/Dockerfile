@@ -17,10 +17,10 @@ RUN apk add --no-cache \
 
 # Copy requirements and install Python packages
 COPY requirements.txt /tmp/
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
 # Install Flask for API
-RUN pip3 install --no-cache-dir flask gunicorn
+RUN pip3 install --no-cache-dir --break-system-packages flask gunicorn
 
 # Copy application files
 WORKDIR /
