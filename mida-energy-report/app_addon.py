@@ -494,26 +494,7 @@ def generate_report():
     except Exception as e:
         logger.error("=" * 60)
         logger.error(f"✗ ERROR SERVING PDF: {e}", exc_info=True)
-        logger.error("=" * 60
-                'status': 'error',
-                'message': 'No report found. Generate one first.'
-            }), 404
-        
-        # Get file info
-        file_stat = pdf_file.stat()
-        file_date = datetime.fromtimestamp(file_stat.st_mtime)
-        
-        logger.info(f"Serving PDF: {pdf_file}")
-        
-        return send_file(
-            pdf_file,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=f'energy_report_{file_date.strftime("%Y%m%d")}.pdf'
-        )
-        
-    except Exception as e:
-        logger.error(f"Error serving PDF: {e}")
+        logger.error("=" * 60)
         return jsonify({
             'status': 'error',
             'message': str(e)
