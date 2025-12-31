@@ -229,7 +229,7 @@ def home():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Mida Energy Report Generator</title>
+        <title>Energy Reports</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
@@ -254,7 +254,7 @@ def home():
     </head>
     <body>
         <div class="container">
-            <h1>📊 Mida Energy Report Generator</h1>
+            <h1>📊 Energy Reports</h1>
             <div class="info-box">
                 <strong>Data Path:</strong> """ + str(DATA_PATH) + """<br>
                 <strong>Reports Path:</strong> """ + str(OUTPUT_PATH) + """<br>
@@ -512,7 +512,7 @@ if __name__ == '__main__':
     DATA_PATH.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     
-    logger.info("Starting Mida Energy Report API (Add-on mode)...")
+    logger.info("Starting Energy Reports API (Add-on mode)...")
     logger.info(f"Data path: {DATA_PATH}")
     logger.info(f"Output path: {OUTPUT_PATH}")
     logger.info(f"Supervisor token available: {bool(SUPERVISOR_TOKEN)}")
