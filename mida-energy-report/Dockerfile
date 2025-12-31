@@ -35,4 +35,4 @@ RUN chmod +x /app/run.sh
 WORKDIR /app
 
 # Run the add-on
-CMD ["/app/run.sh"]
+CMD ["/bin/bash", "/app/run.sh"]
