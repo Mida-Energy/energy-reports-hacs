@@ -28,19 +28,85 @@ OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 @app.route('/')
 def home():
-    """Home page with links to all features"""
-    return jsonify({
-        'status': 'online',
-        'service': 'Mida Energy Report Generator',
-        'version': '1.0.0',
-        'addon': True,
-        'endpoints': {
-            '/health': 'Health check',
-            '/generate': 'Generate PDF report (POST)',
-            '/download/latest': 'Download latest PDF',
-            '/status': 'Get report status'
-        }
-    })
+    """Home page with integrated UI"""
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mida Energy Report Generator</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+            .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #333; margin-bottom: 30px; }
+            .btn { background: #03a9f4; color: white; border: none; padding: 15px 30px; font-size: 16px; 
+                   border-radius: 5px; cursor: pointer; margin: 10px 5px; transition: all 0.3s; }
+            .btn:hover { background: #0288d1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(3,169,244,0.4); }
+            .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+            .btn-download { background: #4caf50; }
+            .btn-download:hover { background: #45a049; }
+            .status { padding: 15px; margin: 20px 0; border-radius: 5px; display: none; }
+            .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+            .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #03a9f4; border-radius: 50%; 
+                       width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; 
+                       vertical-align: middle; margin-left: 10px; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .info-box { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📊 Mida Energy Report Generator</h1>
+            <div class="info-box">
+                <strong>Data Path:</strong> """ + str(DATA_PATH) + """<br>
+                <strong>Reports Path:</strong> """ + str(OUTPUT_PATH) + """
+            </div>
+            <button class="btn" onclick="generateReport()">🔄 Genera Report PDF</button>
+            <button class="btn btn-download" onclick="downloadReport()">📥 Scarica Ultimo Report</button>
+            <div id="status" class="status"></div>
+        </div>
+        <script>
+            function showStatus(message, type) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.className = 'status ' + type;
+                statusDiv.innerHTML = message;
+                statusDiv.style.display = 'block';
+            }
+            
+            function generateReport() {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Generazione in corso...<span class="spinner"></span>';
+                showStatus('Generazione del report in corso... Attendere prego.', 'info');
+                
+                fetch('/generate', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        btn.disabled = false;
+                        btn.innerHTML = '🔄 Genera Report PDF';
+                        if (data.status === 'success') {
+                            showStatus('✅ Report generato con successo! Dimensione: ' + data.pdf_size_kb + ' KB', 'success');
+                        } else {
+                            showStatus('❌ Errore: ' + data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        btn.disabled = false;
+                        btn.innerHTML = '🔄 Genera Report PDF';
+                        showStatus('❌ Errore di rete: ' + error, 'error');
+                    });
+            }
+            
+            function downloadReport() {
+                window.location.href = '/download/latest';
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return html
 
 
 @app.route('/health')
