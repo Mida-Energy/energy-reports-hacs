@@ -477,8 +477,8 @@ def generate_report():
         logger.info("Running analysis and generating PDF...")
         analyzer.run_analysis()
         
-        # Check if PDF was created
-        pdf_file = OUTPUT_PATH / 'report_generale.pdf'
+        # Check if PDF was created (report generator puts it in /media/generale/)
+        pdf_file = OUTPUT_PATH.parent / 'generale' / 'report_generale.pdf'
         logger.info(f"Checking for PDF at: {pdf_file}")
         
         if pdf_file.exists():
@@ -522,7 +522,7 @@ def download_latest():
     logger.info("=" * 60)
     
     try:
-        pdf_file = OUTPUT_PATH / 'report_generale.pdf'
+        pdf_file = OUTPUT_PATH.parent / 'generale' / 'report_generale.pdf'
         logger.info(f"Looking for PDF at: {pdf_file}")
         
         if not pdf_file.exists():
