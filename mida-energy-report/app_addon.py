@@ -98,9 +98,7 @@ class ShellyDataCollector:
             logger.info("=" * 60)
             
             # Collect data from all entities
-            data_row = {
-                'timestamp': int(datetime.now().timestamp())
-            }
+            raw_data = {}
             
             for entity_id in self.entity_ids:
                 logger.info(f"Collecting data from: {entity_id}")
@@ -118,9 +116,37 @@ class ShellyDataCollector:
                         value = 0.0
                         logger.warning(f"  ⚠ {friendly_name}: Cannot convert to float, using 0.0")
                     
-                    data_row[friendly_name] = value
+                    raw_data[friendly_name] = value
                 else:
                     logger.error(f"  ✗ Failed to get data from {entity_id}")
+            
+            # Map Shelly data to standard column names expected by report generator
+            # Potenza = Active Power (W), Potenza apparente = Apparent Power (VA)
+            # We'll sum both meters and calculate averages
+            data_row = {
+                'timestamp': int(datetime.now().timestamp()),
+                'total_act_energy': 0,  # Will be calculated from power readings
+                'max_act_power': 0,
+                'avg_voltage': 230.0,  # Default voltage (Shelly EM doesn't provide this)
+                'avg_current': 0
+            }
+            
+            # Extract power values (Potenza = Active Power in Watts)
+            total_power = 0
+            power_count = 0
+            for key, value in raw_data.items():
+                if 'potenza' in key.lower() and 'apparente' not in key.lower() and 'fattore' not in key.lower():
+                    total_power += value
+                    power_count += 1
+            
+            # Set power and estimate current
+            data_row['max_act_power'] = total_power
+            if data_row['avg_voltage'] > 0:
+                data_row['avg_current'] = total_power / data_row['avg_voltage']
+            
+            # Energy: convert power (W) to energy (Wh) assuming 1-hour interval
+            # This will accumulate over time
+            data_row['total_act_energy'] = total_power
             
             # Check if file exists to determine if we need headers
             file_exists = self.csv_file.exists()
@@ -134,7 +160,7 @@ class ShellyDataCollector:
                 writer.writerow(data_row)
             
             logger.info("=" * 60)
-            logger.info(f"✓ Data collected successfully: {len(data_row)-1} entities saved to {self.csv_file}")
+            logger.info(f"✓ Data collected successfully: {len(raw_data)} entities → {len(data_row)-1} standard columns saved to {self.csv_file}")
             logger.info("=" * 60)
             
         except Exception as e:
