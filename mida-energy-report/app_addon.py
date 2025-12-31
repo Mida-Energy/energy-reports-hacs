@@ -38,6 +38,16 @@ else:
     )
     logger = logging.getLogger(__name__)
 
+# Force unbuffered output
+sys.stdout.flush()
+sys.stderr.flush()
+
+# Log all requests
+@app.before_request
+def log_request():
+    logger.info(f">>> REQUEST: {request.method} {request.path}")
+    sys.stdout.flush()
+
 # Get paths from environment (set by add-on)
 DATA_PATH = Path(os.getenv('DATA_PATH', '/share/energy_reports/data'))
 OUTPUT_PATH = Path('/media/energy_reports')
@@ -348,9 +358,12 @@ def health():
 @app.route('/collect-data', methods=['POST'])
 def collect_data():
     """Manually trigger data collection from Shelly devices"""
+    sys.stdout.flush()
+    sys.stderr.flush()
     logger.info("=" * 60)
     logger.info("MANUAL DATA COLLECTION REQUESTED")
     logger.info("=" * 60)
+    sys.stdout.flush()
     
     try:
         # Discover Shelly entities
@@ -395,9 +408,12 @@ def collect_data():
 @app.route('/generate', methods=['POST'])
 def generate_report():
     """Generate PDF report from CSV data"""
+    sys.stdout.flush()
+    sys.stderr.flush()
     logger.info("=" * 60)
     logger.info("PDF REPORT GENERATION REQUESTED")
     logger.info("=" * 60)
+    sys.stdout.flush()
     
     try:
         logger.info(f"Checking data folder: {DATA_PATH}")
