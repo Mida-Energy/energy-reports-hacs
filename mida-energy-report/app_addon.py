@@ -6,6 +6,7 @@ from flask import Flask, jsonify, send_file, request
 from pathlib import Path
 import sys
 import logging
+import json
 from datetime import datetime
 import os
 import requests
@@ -225,6 +226,9 @@ def discover_shelly_entities():
 @app.route('/')
 def home():
     """Home page with integrated UI"""
+    logger.info("=" * 60)
+    logger.info("HOME PAGE ACCESSED")
+    logger.info("=" * 60)
     html = """
     <!DOCTYPE html>
     <html>
@@ -337,25 +341,38 @@ def home():
 @app.route('/health')
 def health():
     """Health check for Home Assistant"""
+    logger.info("Health check requested")
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 
 @app.route('/collect-data', methods=['POST'])
 def collect_data():
     """Manually trigger data collection from Shelly devices"""
+    logger.info("=" * 60)
+    logger.info("MANUAL DATA COLLECTION REQUESTED")
+    logger.info("=" * 60)
+    
     try:
         # Discover Shelly entities
+        logger.info("Starting Shelly entity discovery...")
         entity_ids = discover_shelly_entities()
         
         if not entity_ids:
+            logger.error("No Shelly entities found!")
             return jsonify({
                 'status': 'error',
                 'message': 'No Shelly entities found in Home Assistant'
             }), 404
         
+        logger.info(f"Found {len(entity_ids)} entities, starting collection...")
+        
         # Collect data immediately
         collector = ShellyDataCollector(entity_ids, interval_seconds=300)
         collector.collect_and_save()
+        
+        logger.info("=" * 60)
+        logger.info("✓ MANUAL COLLECTION COMPLETED SUCCESSFULLY")
+        logger.info("=" * 60)
         
         return jsonify({
             'status': 'success',
@@ -366,7 +383,9 @@ def collect_data():
         })
         
     except Exception as e:
-        logger.error(f"Error collecting data: {e}", exc_info=True)
+        logger.error("=" * 60)
+        logger.error(f"✗ ERROR IN MANUAL COLLECTION: {e}", exc_info=True)
+        logger.error("=" * 60)
         return jsonify({
             'status': 'error',
             'message': str(e)
@@ -376,8 +395,12 @@ def collect_data():
 @app.route('/generate', methods=['POST'])
 def generate_report():
     """Generate PDF report from CSV data"""
+    logger.info("=" * 60)
+    logger.info("PDF REPORT GENERATION REQUESTED")
+    logger.info("=" * 60)
+    
     try:
-        logger.info("=== Starting PDF report generation ===")
+        logger.info(f"Checking data folder: {DATA_PATH}")
         
         # Check data folder
         if not DATA_PATH.exists():
@@ -389,6 +412,8 @@ def generate_report():
         
         # Check for CSV files
         csv_files = list(DATA_PATH.glob("*.csv"))
+        logger.info(f"Found {len(csv_files)} CSV files in {DATA_PATH}")
+        
         if not csv_files:
             logger.error("No CSV files found")
             return jsonify({
@@ -396,9 +421,11 @@ def generate_report():
                 'message': 'No CSV files found. Make sure Shelly data is being collected.'
             }), 404
         
-        logger.info(f"Found {len(csv_files)} CSV files")
+        for csv_file in csv_files:
+            logger.info(f"  - {csv_file.name}")
         
         # Create analyzer and generate report
+        logger.info("Creating ShellyEnergyReport analyzer...")
         analyzer = ShellyEnergyReport(
             data_dir=str(DATA_PATH),
             output_dir=str(OUTPUT_PATH.parent),
@@ -410,38 +437,64 @@ def generate_report():
         
         # Check if PDF was created
         pdf_file = OUTPUT_PATH / 'report_generale.pdf'
+        logger.info(f"Checking for PDF at: {pdf_file}")
+        
         if pdf_file.exists():
-            logger.info(f"PDF generated successfully: {pdf_file}")
+            file_size = pdf_file.stat().st_size
+            logger.info("=" * 60)
+            logger.info(f"✓ PDF GENERATED SUCCESSFULLY: {pdf_file}")
+            logger.info(f"  File size: {round(file_size / 1024, 2)} KB")
+            logger.info("=" * 60)
+            
             return jsonify({
                 'status': 'success',
                 'message': 'Report generated successfully!',
-                'pdf_size_kb': round(pdf_file.stat().st_size / 1024, 2),
+                'pdf_size_kb': round(file_size / 1024, 2),
                 'timestamp': datetime.now().isoformat(),
                 'download_url': '/download/latest'
             })
         else:
             logger.error("PDF not found after generation")
-            return jsonify({
-                'status': 'error',
-                'message': 'PDF generation failed'
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"Error generating report: {e}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-
-
-@app.route('/download/latest')
-def download_latest():
-    """Download the latest PDF report"""
+            logger.error(f"Expected location: {pdf_file}")
+    logger.info("=" * 60)
+    logger.info("PDF DOWNLOAD REQUESTED")
+    logger.info("=" * 60)
+    
     try:
         pdf_file = OUTPUT_PATH / 'report_generale.pdf'
+        logger.info(f"Looking for PDF at: {pdf_file}")
         
         if not pdf_file.exists():
+            logger.error(f"PDF not found at {pdf_file}")
+            logger.error(f"Output directory exists: {OUTPUT_PATH.exists()}")
+            if OUTPUT_PATH.exists():
+                logger.error(f"Output directory contents: {list(OUTPUT_PATH.iterdir())}")
             return jsonify({
+                'status': 'error',
+                'message': 'No report found. Generate one first.'
+            }), 404
+        
+        # Get file info
+        file_stat = pdf_file.stat()
+        file_date = datetime.fromtimestamp(file_stat.st_mtime)
+        file_size = file_stat.st_size
+        
+        logger.info(f"✓ Serving PDF: {pdf_file}")
+        logger.info(f"  Size: {round(file_size / 1024, 2)} KB")
+        logger.info(f"  Modified: {file_date}")
+        logger.info("=" * 60)
+        
+        return send_file(
+            pdf_file,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'energy_report_{file_date.strftime("%Y%m%d")}.pdf'
+        )
+        
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error(f"✗ ERROR SERVING PDF: {e}", exc_info=True)
+        logger.error("=" * 60
                 'status': 'error',
                 'message': 'No report found. Generate one first.'
             }), 404
