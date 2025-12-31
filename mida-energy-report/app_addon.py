@@ -99,7 +99,7 @@ class ShellyDataCollector:
             
             # Collect data from all entities
             data_row = {
-                'timestamp': datetime.now().isoformat()
+                'timestamp': int(datetime.now().timestamp())
             }
             
             for entity_id in self.entity_ids:
