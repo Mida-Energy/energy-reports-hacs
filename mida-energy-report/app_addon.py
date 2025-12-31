@@ -26,8 +26,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Get paths from environment (set by add-on)
-DATA_PATH = Path(os.getenv('DATA_PATH', '/config/mida_energy/data'))
-OUTPUT_PATH = Path('/media/mida_energy_reports')
+DATA_PATH = Path(os.getenv('DATA_PATH', '/share/energy_reports/data'))
+OUTPUT_PATH = Path('/media/energy_reports')
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 DATA_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -399,7 +399,7 @@ def download_latest():
             pdf_file,
             mimetype='application/pdf',
             as_attachment=True,
-            download_name=f'mida_energy_report_{file_date.strftime("%Y%m%d")}.pdf'
+            download_name=f'energy_report_{file_date.strftime("%Y%m%d")}.pdf'
         )
         
     except Exception as e:

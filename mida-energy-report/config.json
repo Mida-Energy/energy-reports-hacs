@@ -29,7 +29,7 @@
   "hassio_api": true,
   "hassio_role": "default",
   "options": {
-    "data_path": "/share/mida_energy/data",
+    "data_path": "/share/energy_reports/data",
     "auto_export_enabled": true,
     "export_interval_hours": 1
   },
