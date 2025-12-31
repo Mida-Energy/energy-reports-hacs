@@ -285,7 +285,9 @@ def home():
                 statusDiv.className = 'status ' + type;
                 statusDiv.innerHTML = message;
                 statusDiv.style.display = 'block';
-            }collectData() {
+            }
+            
+            function collectData() {
                 const btn = event.target;
                 btn.disabled = true;
                 btn.innerHTML = '⏳ Raccolta dati...<span class="spinner"></span>';
@@ -308,8 +310,6 @@ def home():
                         showStatus('❌ Errore di rete: ' + error, 'error');
                     });
             }
-            
-            function 
             
             function generateReport() {
                 const btn = event.target;
