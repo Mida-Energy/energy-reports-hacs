@@ -456,6 +456,25 @@ def generate_report():
         else:
             logger.error("PDF not found after generation")
             logger.error(f"Expected location: {pdf_file}")
+            logger.error(f"Output directory contents: {list(OUTPUT_PATH.parent.iterdir())}")
+            return jsonify({
+                'status': 'error',
+                'message': 'PDF generation failed - file not created'
+            }), 500
+            
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error(f"✗ ERROR GENERATING REPORT: {e}", exc_info=True)
+        logger.error("=" * 60)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/download/latest')
+def download_latest():
+    """Download the latest PDF report"""
     logger.info("=" * 60)
     logger.info("PDF DOWNLOAD REQUESTED")
     logger.info("=" * 60)
