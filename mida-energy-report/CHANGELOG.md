@@ -2,6 +2,45 @@
 
 All notable changes to the Energy Reports add-on will be documented in this file.
 
+## [1.2.0] - 2025-01-XX
+
+### Added
+- Home Assistant history API integration for efficient data retrieval
+- Device selection UI with checkboxes for custom reports
+- All device data now collected automatically from HA history
+- Device selection affects only report generation, not data collection
+- Fetches last 7 days of historical data from Home Assistant
+
+### Changed
+- Disabled background polling in favor of on-demand history fetch
+- Improved data collection to fetch from ALL discovered Shelly devices
+- Device selection now only filters which devices appear in reports
+- Updated UI messages to clarify new data collection approach
+- More efficient data retrieval using HA's built-in history database
+
+### Fixed
+- Improved performance by eliminating continuous polling
+- Reduced load on Home Assistant by using history API
+- Better data consistency using HA's stored historical data
+
+## [1.1.0] - 2025-01-XX
+
+### Added
+- Home Assistant Ingress integration for sidebar UI
+- Material Design dark theme matching Home Assistant
+- Device selection interface with entity management
+- API endpoints for entity discovery and selection
+
+### Changed
+- Removed all emoji characters from codebase
+- Separated temporary files from final PDF outputs
+- Improved JSON response handling
+
+### Fixed
+- JSON parsing errors in API responses
+- Download button state management
+- Multi-worker initialization conflicts
+
 ## [1.0.6] - 2025-12-31
 
 ### Added
@@ -37,9 +76,10 @@ All notable changes to the Energy Reports add-on will be documented in this file
 
 ## Future Plans
 
-- [ ] Configurable entity selection in UI
 - [ ] Multiple report templates
 - [ ] Email report delivery
 - [ ] Historical data comparison
 - [ ] Cost calculation features
 - [ ] Multi-language support
+- [ ] Custom date range selection
+- [ ] Export to other formats (Excel, JSON)

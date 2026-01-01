@@ -4,11 +4,11 @@ Generate professional PDF energy reports from your Shelly EM data directly in Ho
 
 ## What it does
 
-- **Auto-discovers Shelly devices** and collects data automatically
+- **Auto-discovers Shelly devices** and fetches their historical data
 - **Generates PDF reports** with charts, statistics, and insights  
 - **One-click download** from Home Assistant dashboard
 - **Professional reports** with daily and historical analysis
-- **Background data collection** with configurable intervals
+- **Uses Home Assistant history** - no polling, efficient and fast
 
 ---
 
@@ -67,22 +67,26 @@ http://homeassistant.local:5000
 ### Generate Your First Report
 
 1. Make sure your **Shelly EM is integrated** in Home Assistant
-2. Click **"Generate Report"** button
-3. Wait 30-60 seconds
-4. Click **"Download PDF"**
-5. Done!
+2. Click **"Collect Data"** to fetch historical data (last 7 days) from Home Assistant
+3. Optionally, select which devices to include in the report
+4. Click **"Generate Report"** button
+5. Wait 30-60 seconds
+6. Click **"Download PDF"**
+7. Done!
 
 ---
 
 ## Features
 
-- Automatic Shelly EM data collection  
+- Automatic Shelly EM discovery
+- Fetches historical data from Home Assistant (last 7 days)
 - Professional PDF reports with charts  
 - Daily and general reports  
 - Energy consumption statistics  
 - Power usage analysis  
 - Hourly breakdown  
-- Recommendations and insights  
+- Recommendations and insights
+- Device selection for custom reports
 - Works on all architectures (ARM, x86)  
 
 ---

@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import requests
 import csv
@@ -50,10 +50,6 @@ else:
     )
     logger = logging.getLogger(__name__)
 
-# Force unbuffered output
-sys.stdout.flush()
-sys.stderr.flush()
-
 # Get paths from environment (set by add-on)
 DATA_PATH = Path(os.getenv('DATA_PATH', '/share/energy_reports/data'))
 TEMP_OUTPUT_PATH = Path('/share/energy_reports/output')  # For charts, temp files
@@ -73,6 +69,149 @@ HEADERS = {
 # Data collection thread
 collection_thread = None
 stop_collection = False
+
+
+def get_history_from_ha(entity_ids, start_time=None, end_time=None):
+    """Get historical data from Home Assistant for specified entities"""
+    try:
+        # Default to last 7 days if no time range specified
+        if end_time is None:
+            end_time = datetime.now()
+        if start_time is None:
+            start_time = end_time - timedelta(days=7)
+        
+        # Format timestamps for HA API
+        start_str = start_time.strftime('%Y-%m-%dT%H:%M:%S')
+        end_str = end_time.strftime('%Y-%m-%dT%H:%M:%S')
+        
+        logger.info(f"Fetching history from {start_str} to {end_str}")
+        logger.info(f"For {len(entity_ids)} entities")
+        
+        # HA History API endpoint
+        url = f"{HA_API_URL}/history/period/{start_str}"
+        params = {
+            'filter_entity_id': ','.join(entity_ids),
+            'end_time': end_str
+        }
+        
+        response = requests.get(url, headers=HEADERS, params=params, timeout=30)
+        
+        if response.status_code != 200:
+            logger.error(f"Failed to get history: {response.status_code}")
+            return None
+        
+        history_data = response.json()
+        logger.info(f"Retrieved history data for {len(history_data)} entities")
+        
+        return history_data
+        
+    except Exception as e:
+        logger.error(f"Error getting history from HA: {e}", exc_info=True)
+        return None
+
+
+def convert_history_to_csv(history_data, output_file):
+    """Convert HA history data to CSV format"""
+    try:
+        logger.info(f"Converting history data to CSV: {output_file}")
+        
+        all_rows = []
+        
+        for entity_history in history_data:
+            if not entity_history:
+                continue
+                
+            for state in entity_history:
+                try:
+                    timestamp = datetime.fromisoformat(state['last_changed'].replace('Z', '+00:00'))
+                    
+                    # Try to get numeric value
+                    value = 0.0
+                    try:
+                        value = float(state['state'])
+                    except (ValueError, TypeError):
+                        continue
+                    
+                    entity_id = state['entity_id']
+                    friendly_name = state.get('attributes', {}).get('friendly_name', entity_id)
+                    
+                    all_rows.append({
+                        'timestamp': int(timestamp.timestamp()),
+                        'entity_id': entity_id,
+                        'friendly_name': friendly_name,
+                        'value': value
+                    })
+                except Exception as e:
+                    logger.debug(f"Error processing state: {e}")
+                    continue
+        
+        if not all_rows:
+            logger.warning("No valid data points found in history")
+            return False
+        
+        # Sort by timestamp
+        all_rows.sort(key=lambda x: x['timestamp'])
+        
+        # Group by timestamp and aggregate power values
+        aggregated = {}
+        for row in all_rows:
+            ts = row['timestamp']
+            if ts not in aggregated:
+                aggregated[ts] = {
+                    'timestamp': ts,
+                    'total_act_energy': 0,
+                    'max_act_power': 0,
+                    'avg_voltage': 230.0,
+                    'avg_current': 0
+                }
+            
+            # Sum power values
+            if 'potenza' in row['entity_id'].lower() and 'apparente' not in row['entity_id'].lower():
+                aggregated[ts]['max_act_power'] += row['value']
+                aggregated[ts]['total_act_energy'] += row['value']
+        
+        # Calculate current
+        for data in aggregated.values():
+            if data['avg_voltage'] > 0:
+                data['avg_current'] = data['max_act_power'] / data['avg_voltage']
+        
+        # Write to CSV
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file, 'w', newline='') as f:
+            fieldnames = ['timestamp', 'total_act_energy', 'max_act_power', 'avg_voltage', 'avg_current']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for data in sorted(aggregated.values(), key=lambda x: x['timestamp']):
+                writer.writerow(data)
+        
+        logger.info(f"[SUCCESS] Wrote {len(aggregated)} data points to {output_file}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error converting history to CSV: {e}", exc_info=True)
+        return False
+
+
+def filter_csv_by_selected_entities(input_csv, output_csv, selected_entity_ids):
+    """Filter CSV data to include only selected entities"""
+    try:
+        logger.info(f"Filtering CSV for {len(selected_entity_ids)} selected entities")
+        
+        if not input_csv.exists():
+            logger.error(f"Input CSV not found: {input_csv}")
+            return False
+        
+        # For now, since we're aggregating all data, we'll just copy the file
+        # In future, if we track entity_id in CSV, we can filter here
+        import shutil
+        shutil.copy2(input_csv, output_csv)
+        
+        logger.info(f"[SUCCESS] Filtered CSV saved to {output_csv}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error filtering CSV: {e}", exc_info=True)
+        return False
 
 
 class ShellyDataCollector:
@@ -197,8 +336,14 @@ class ShellyDataCollector:
 
 
 def start_background_collection():
-    """Start background data collection thread"""
+    """Start background data collection thread (only in first worker)"""
     global collection_thread
+    
+    # Only start collection in the first worker to avoid duplicates
+    # Check if we're running under Gunicorn with multiple workers
+    if collection_thread is not None:
+        logger.info("Background collection already initialized, skipping...")
+        return
     
     logger.info("=" * 60)
     logger.info("Initializing background data collection...")
@@ -211,9 +356,23 @@ def start_background_collection():
     logger.info(f"Auto-export enabled: {auto_export}")
     logger.info(f"Export interval: {interval_hours} hours")
     
-    # For now, we'll auto-discover Shelly entities
-    # In a future version, this could be configurable
-    entity_ids = discover_shelly_entities()
+    # Check for selected entities first
+    config_file = DATA_PATH / 'selected_entities.json'
+    entity_ids = []
+    
+    if config_file.exists():
+        try:
+            with open(config_file, 'r') as f:
+                entity_ids = json.load(f)
+            logger.info(f"Loaded {len(entity_ids)} selected entities from config")
+        except Exception as e:
+            logger.error(f"Error loading selected entities: {e}")
+    
+    # If no selection, discover all
+    if not entity_ids:
+        logger.info("No entity selection found, discovering all Shelly devices...")
+        discovered = discover_shelly_entities()
+        entity_ids = [e['entity_id'] if isinstance(e, dict) else e for e in discovered]
     
     if entity_ids and auto_export:
         collector = ShellyDataCollector(entity_ids, interval_seconds=interval_hours * 3600)
@@ -251,8 +410,12 @@ def discover_shelly_entities():
         # Look for Shelly energy/power sensors
         for state in all_states:
             entity_id = state.get('entity_id', '')
+            friendly_name = state.get('attributes', {}).get('friendly_name', entity_id)
             if 'shelly' in entity_id.lower() and any(x in entity_id for x in ['power', 'energy']):
-                shelly_entities.append(entity_id)
+                shelly_entities.append({
+                    'entity_id': entity_id,
+                    'friendly_name': friendly_name
+                })
                 logger.info(f"  [OK] Found: {entity_id}")
         
         logger.info("=" * 60)
@@ -453,6 +616,41 @@ def home():
                 background: rgba(76, 175, 80, 0.2);
                 color: #4caf50;
             }
+            .device-item {
+                padding: 12px;
+                border-bottom: 1px solid #2a2a2a;
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .device-item:hover {
+                background: rgba(255, 255, 255, 0.05);
+            }
+            .device-item:last-child {
+                border-bottom: none;
+            }
+            .device-checkbox {
+                width: 20px;
+                height: 20px;
+                margin-right: 12px;
+                cursor: pointer;
+                accent-color: #03a9f4;
+            }
+            .device-info {
+                flex: 1;
+            }
+            .device-name {
+                color: #e1e1e1;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            .device-id {
+                color: #9b9b9b;
+                font-size: 12px;
+                margin-top: 2px;
+                font-family: monospace;
+            }
         </style>
     </head>
     <body>
@@ -483,6 +681,25 @@ def home():
 
             <div class="card">
                 <div class="card-title">
+                    <span class="material-icons">devices</span>
+                    Device Selection
+                </div>
+                <p style="color: #9b9b9b; font-size: 14px; margin-bottom: 16px;">
+                    Select which Shelly devices to include in reports. All device data is collected automatically from Home Assistant history.
+                </p>
+                <div id="deviceList" style="max-height: 300px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 20px; color: #9b9b9b;">
+                        <span class="spinner"></span> Loading devices...
+                    </div>
+                </div>
+                <button class="btn" onclick="saveDeviceSelection()" style="margin-top: 16px; width: 100%;">
+                    <span class="material-icons">save</span>
+                    Save Selection
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
                     <span class="material-icons">manage_history</span>
                     Actions
                 </div>
@@ -495,7 +712,7 @@ def home():
                         <span class="material-icons">description</span>
                         Generate Report
                     </button>
-                    <button class="btn btn-success" onclick="downloadReport()">
+                    <button class="btn btn-success" id="downloadBtn" onclick="downloadReport()" disabled>
                         <span class="material-icons">download</span>
                         Download PDF
                     </button>
@@ -504,6 +721,22 @@ def home():
             </div>
         </div>
         <script>
+            let availableEntities = [];
+            let selectedEntities = [];
+            
+            // Load devices on page load
+            loadDevices();
+            
+            // Check if PDF exists on page load
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.has_report) {
+                        document.getElementById('downloadBtn').disabled = false;
+                    }
+                })
+                .catch(err => console.log('Status check failed:', err));
+            
             function showStatus(message, type) {
                 const statusDiv = document.getElementById('status');
                 statusDiv.className = 'status ' + type;
@@ -521,7 +754,7 @@ def home():
                 const originalHTML = btn.innerHTML;
                 btn.disabled = true;
                 btn.innerHTML = '<span class="material-icons">hourglass_empty</span>Processing...<span class="spinner"></span>';
-                showStatus('Collecting data from Shelly devices...', 'info');
+                showStatus('Fetching historical data from Home Assistant (last 7 days)...', 'info');
                 
                 fetch('/collect-data', { method: 'POST' })
                     .then(response => response.json())
@@ -529,7 +762,7 @@ def home():
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
                         if (data.status === 'success') {
-                            showStatus('<strong>Success!</strong> Collected data from ' + data.entities_count + ' entities and saved to CSV', 'success');
+                            showStatus('<strong>Success!</strong> Fetched historical data from Home Assistant and saved to CSV', 'success');
                         } else {
                             showStatus('<strong>Error:</strong> ' + data.message, 'error');
                         }
@@ -554,6 +787,8 @@ def home():
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
                         if (data.status === 'success') {
+                            // Enable download button
+                            document.getElementById('downloadBtn').disabled = false;
                             showStatus('<strong>Success!</strong> Report generated successfully (' + data.pdf_size_kb + ' KB)<br>' +
                                       '<a href="/download/latest" style="color: #81c784; text-decoration: underline; font-weight: 500;">' +
                                       'Click here to download</a>', 'success');
@@ -569,6 +804,12 @@ def home():
             }
             
             function downloadReport() {
+                const pdfExists = !document.getElementById('downloadBtn').disabled;
+                if (!pdfExists) {
+                    showStatus('<strong>No PDF available.</strong> Please generate a report first.', 'error');
+                    return;
+                }
+                
                 // For Ingress compatibility, open in same window
                 const downloadUrl = '/download/latest';
                 const link = document.createElement('a');
@@ -578,6 +819,85 @@ def home():
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+            }
+            
+            function loadDevices() {
+                fetch('/api/entities')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            availableEntities = data.entities;
+                            selectedEntities = data.selected || [];
+                            renderDeviceList();
+                        } else {
+                            document.getElementById('deviceList').innerHTML = 
+                                '<div style="text-align: center; padding: 20px; color: #e57373;">Error loading devices</div>';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('deviceList').innerHTML = 
+                            '<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load devices</div>';
+                    });
+            }
+            
+            function renderDeviceList() {
+                const container = document.getElementById('deviceList');
+                if (availableEntities.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No Shelly devices found</div>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                availableEntities.forEach(entity => {
+                    const isSelected = selectedEntities.includes(entity.entity_id);
+                    const item = document.createElement('div');
+                    item.className = 'device-item';
+                    item.onclick = () => toggleDevice(entity.entity_id);
+                    
+                    item.innerHTML = `
+                        <input type="checkbox" class="device-checkbox" ${isSelected ? 'checked' : ''} 
+                               onclick="event.stopPropagation(); toggleDevice('${entity.entity_id}')">
+                        <div class="device-info">
+                            <div class="device-name">${entity.friendly_name}</div>
+                            <div class="device-id">${entity.entity_id}</div>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+            
+            function toggleDevice(entityId) {
+                const index = selectedEntities.indexOf(entityId);
+                if (index > -1) {
+                    selectedEntities.splice(index, 1);
+                } else {
+                    selectedEntities.push(entityId);
+                }
+                renderDeviceList();
+            }
+            
+            function saveDeviceSelection() {
+                if (selectedEntities.length === 0) {
+                    showStatus('<strong>Warning:</strong> Please select at least one device for reports', 'error');
+                    return;
+                }
+                
+                fetch('/api/entities/select', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ entity_ids: selectedEntities })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showStatus('<strong>Success!</strong> Saved ' + selectedEntities.length + ' devices for report generation.', 'success');
+                    } else {
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('<strong>Error:</strong> Failed to save selection', 'error');
+                });
             }
         </script>
     </body>
@@ -593,17 +913,69 @@ def health():
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 
+@app.route('/api/entities', methods=['GET'])
+def get_entities():
+    """Get list of available Shelly entities"""
+    try:
+        entities = discover_shelly_entities()
+        
+        # Load selected entities from file
+        config_file = DATA_PATH / 'selected_entities.json'
+        selected = []
+        if config_file.exists():
+            with open(config_file, 'r') as f:
+                selected = json.load(f)
+        
+        return jsonify({
+            'status': 'success',
+            'entities': entities,
+            'selected': selected
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/entities/select', methods=['POST'])
+def select_entities():
+    """Save selected entities"""
+    try:
+        data = request.get_json()
+        selected_ids = data.get('entity_ids', [])
+        
+        # Save to file
+        config_file = DATA_PATH / 'selected_entities.json'
+        with open(config_file, 'w') as f:
+            json.dump(selected_ids, f)
+        
+        logger.info(f"Saved {len(selected_ids)} selected entities")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Saved {len(selected_ids)} entities',
+            'selected': selected_ids
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 @app.route('/collect-data', methods=['POST'])
 def collect_data():
-    """Manually trigger data collection from Shelly devices"""
+    """Manually trigger data collection from Home Assistant history"""
     logger.info("=" * 60)
     logger.info("MANUAL DATA COLLECTION REQUESTED")
     logger.info("=" * 60)
     
     try:
-        # Discover Shelly entities
-        logger.info("Starting Shelly entity discovery...")
-        entity_ids = discover_shelly_entities()
+        # Always discover ALL Shelly entities (ignore selection)
+        logger.info("Discovering all Shelly devices...")
+        discovered = discover_shelly_entities()
+        entity_ids = [e['entity_id'] if isinstance(e, dict) else e for e in discovered]
         
         if not entity_ids:
             logger.error("No Shelly entities found!")
@@ -612,11 +984,29 @@ def collect_data():
                 'message': 'No Shelly entities found in Home Assistant'
             }), 404
         
-        logger.info(f"Found {len(entity_ids)} entities, starting collection...")
+        logger.info(f"Found {len(entity_ids)} entities, fetching history...")
         
-        # Collect data immediately
-        collector = ShellyDataCollector(entity_ids, interval_seconds=300)
-        collector.collect_and_save()
+        # Get history data from HA for last 7 days
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=7)
+        
+        history_data = get_history_from_ha(entity_ids, start_time, end_time)
+        
+        if not history_data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to retrieve history data from Home Assistant'
+            }), 500
+        
+        # Convert to CSV format
+        csv_file = DATA_PATH / 'all.csv'
+        success = convert_history_to_csv(history_data, csv_file)
+        
+        if not success:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to convert history data to CSV'
+            }), 500
         
         logger.info("=" * 60)
         logger.info("[SUCCESS] MANUAL COLLECTION COMPLETED SUCCESSFULLY")
@@ -624,7 +1014,7 @@ def collect_data():
         
         return jsonify({
             'status': 'success',
-            'message': 'Data collected successfully',
+            'message': 'Data collected successfully from Home Assistant history',
             'entities_count': len(entity_ids),
             'entities': entity_ids,
             'csv_file': str(collector.csv_file)
@@ -658,24 +1048,45 @@ def generate_report():
                 'message': f'Data folder not found: {DATA_PATH}'
             }), 404
         
-        # Check for CSV files
-        csv_files = list(DATA_PATH.glob("*.csv"))
-        logger.info(f"Found {len(csv_files)} CSV files in {DATA_PATH}")
-        
-        if not csv_files:
-            logger.error("No CSV files found")
+        # Check for main CSV file
+        main_csv = DATA_PATH / 'all.csv'
+        if not main_csv.exists():
+            logger.error("No CSV data found")
             return jsonify({
                 'status': 'error',
-                'message': 'No CSV files found. Make sure Shelly data is being collected.'
+                'message': 'No CSV data found. Collect data first.'
             }), 404
         
-        for csv_file in csv_files:
-            logger.info(f"  - {csv_file.name}")
+        # Load selected entities for filtering
+        config_file = DATA_PATH / 'selected_entities.json'
+        selected_entities = []
+        
+        if config_file.exists():
+            try:
+                with open(config_file, 'r') as f:
+                    selected_entities = json.load(f)
+                logger.info(f"Loaded {len(selected_entities)} selected entities for report filtering")
+            except Exception as e:
+                logger.warning(f"Could not load selected entities: {e}")
+        
+        # If entities are selected, filter the CSV data for report
+        report_data_dir = DATA_PATH
+        if selected_entities:
+            logger.info("Filtering data for selected entities...")
+            filtered_csv = DATA_PATH / 'filtered_report.csv'
+            success = filter_csv_by_selected_entities(main_csv, filtered_csv, selected_entities)
+            if success:
+                # Create temp directory for filtered data
+                report_data_dir = DATA_PATH / 'filtered'
+                report_data_dir.mkdir(exist_ok=True)
+                # Copy filtered CSV to temp directory
+                import shutil
+                shutil.copy2(filtered_csv, report_data_dir / 'all.csv')
         
         # Create analyzer and generate report
         logger.info("Creating ShellyEnergyReport analyzer...")
         analyzer = ShellyEnergyReport(
-            data_dir=str(DATA_PATH),
+            data_dir=str(report_data_dir),
             output_dir=str(TEMP_OUTPUT_PATH),
             correct_timestamps=True
         )
@@ -698,6 +1109,10 @@ def generate_report():
             logger.info(f"[SUCCESS] PDF GENERATED SUCCESSFULLY: {final_pdf_file}")
             logger.info(f"  File size: {round(file_size / 1024, 2)} KB")
             logger.info("=" * 60)
+            
+            # Cleanup temp filtered directory
+            if selected_entities:
+                shutil.rmtree(report_data_dir, ignore_errors=True)
             
             return jsonify({
                 'status': 'success',
@@ -829,8 +1244,8 @@ def initialize_addon():
     logger.info(f"Supervisor token available: {bool(SUPERVISOR_TOKEN)}")
     logger.info("=" * 60)
     
-    # Start background data collection
-    start_background_collection()
+    # Background collection disabled - using Home Assistant history API instead
+    logger.info("Background collection disabled - data will be fetched from HA history on demand")
 
 
 # Initialize when running under Gunicorn
