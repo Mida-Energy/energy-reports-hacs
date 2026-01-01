@@ -279,39 +279,229 @@ def home():
     <head>
         <title>Energy Reports</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
         <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
-            .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            h1 { color: #333; margin-bottom: 30px; }
-            .btn { background: #03a9f4; color: white; border: none; padding: 15px 30px; font-size: 16px; 
-                   border-radius: 5px; cursor: pointer; margin: 10px 5px; transition: all 0.3s; }
-            .btn:hover { background: #0288d1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(3,169,244,0.4); }
-            .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
-            .btn-download { background: #4caf50; }
-            .btn-download:hover { background: #45a049; }
-            .status { padding: 15px; margin: 20px 0; border-radius: 5px; display: none; }
-            .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-            .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-            .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-            .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #03a9f4; border-radius: 50%; 
-                       width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; 
-                       vertical-align: middle; margin-left: 10px; }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            .info-box { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, sans-serif;
+                background: #111111;
+                color: #e1e1e1;
+                padding: 20px;
+                min-height: 100vh;
+            }
+            .container { 
+                max-width: 1000px; 
+                margin: 0 auto;
+            }
+            .header {
+                background: #1c1c1c;
+                padding: 24px;
+                border-radius: 8px;
+                margin-bottom: 24px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            }
+            h1 { 
+                color: #e1e1e1;
+                font-size: 28px;
+                font-weight: 400;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+            }
+            h1 .material-icons {
+                margin-right: 12px;
+                font-size: 32px;
+                color: #03a9f4;
+            }
+            .subtitle {
+                color: #9b9b9b;
+                font-size: 14px;
+                font-weight: 300;
+            }
+            .card { 
+                background: #1c1c1c;
+                padding: 24px;
+                border-radius: 8px;
+                margin-bottom: 16px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            }
+            .card-title {
+                color: #e1e1e1;
+                font-size: 16px;
+                font-weight: 500;
+                margin-bottom: 16px;
+                display: flex;
+                align-items: center;
+            }
+            .card-title .material-icons {
+                margin-right: 8px;
+                font-size: 20px;
+                color: #03a9f4;
+            }
+            .info-item {
+                padding: 8px 0;
+                border-bottom: 1px solid #2a2a2a;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .info-item:last-child { border-bottom: none; }
+            .info-label {
+                color: #9b9b9b;
+                font-size: 14px;
+            }
+            .info-value {
+                color: #e1e1e1;
+                font-size: 14px;
+                font-family: monospace;
+            }
+            .button-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 16px;
+                margin-bottom: 16px;
+            }
+            .btn { 
+                background: #03a9f4;
+                color: white;
+                border: none;
+                padding: 16px 24px;
+                font-size: 14px;
+                font-weight: 500;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 4px rgba(3, 169, 244, 0.3);
+            }
+            .btn .material-icons {
+                margin-right: 8px;
+                font-size: 20px;
+            }
+            .btn:hover { 
+                background: #0288d1;
+                box-shadow: 0 4px 8px rgba(3, 169, 244, 0.4);
+                transform: translateY(-1px);
+            }
+            .btn:disabled { 
+                background: #3a3a3a;
+                color: #666;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+            .btn-success { 
+                background: #4caf50;
+                box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+            }
+            .btn-success:hover { 
+                background: #388e3c;
+                box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+            }
+            .status { 
+                padding: 16px;
+                margin: 16px 0;
+                border-radius: 4px;
+                display: none;
+                border-left: 4px solid;
+            }
+            .status.success { 
+                background: rgba(76, 175, 80, 0.1);
+                color: #81c784;
+                border-color: #4caf50;
+            }
+            .status.error { 
+                background: rgba(244, 67, 54, 0.1);
+                color: #e57373;
+                border-color: #f44336;
+            }
+            .status.info { 
+                background: rgba(3, 169, 244, 0.1);
+                color: #4fc3f7;
+                border-color: #03a9f4;
+            }
+            .spinner { 
+                border: 2px solid rgba(255,255,255,0.3);
+                border-top: 2px solid white;
+                border-radius: 50%;
+                width: 16px;
+                height: 16px;
+                animation: spin 0.8s linear infinite;
+                display: inline-block;
+                vertical-align: middle;
+                margin-left: 8px;
+            }
+            @keyframes spin { 
+                0% { transform: rotate(0deg); } 
+                100% { transform: rotate(360deg); } 
+            }
+            .badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 500;
+                background: rgba(3, 169, 244, 0.2);
+                color: #03a9f4;
+            }
+            .badge.success {
+                background: rgba(76, 175, 80, 0.2);
+                color: #4caf50;
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>📊 Energy Reports</h1>
-            <div class="info-box">
-                <strong>Data Path:</strong> """ + str(DATA_PATH) + """<br>
-                <strong>Reports Path:</strong> """ + str(OUTPUT_PATH) + """<br>
-                <strong>Auto-Collection:</strong> """ + str(os.getenv('AUTO_EXPORT', 'true')) + """
+            <div class="header">
+                <h1><span class="material-icons">assessment</span>Energy Reports</h1>
+                <p class="subtitle">Generate and manage your energy consumption reports</p>
             </div>
-            <button class="btn" onclick="collectData()">📊 Raccogli Dati Shelly Ora</button>
-            <button class="btn" onclick="generateReport()">🔄 Genera Report PDF</button>
-            <button class="btn btn-download" onclick="downloadReport()">📥 Scarica Ultimo Report</button>
-            <div id="status" class="status"></div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons">settings</span>
+                    Configuration
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Data Path</span>
+                    <span class="info-value">""" + str(DATA_PATH) + """</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Reports Path</span>
+                    <span class="info-value">""" + str(OUTPUT_PATH) + """</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Auto-Collection</span>
+                    <span class="badge """ + ("success" if os.getenv('AUTO_EXPORT', 'true') == 'true' else "") + """">""" + str(os.getenv('AUTO_EXPORT', 'true')) + """</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons">manage_history</span>
+                    Actions
+                </div>
+                <div class="button-grid">
+                    <button class="btn" onclick="collectData()">
+                        <span class="material-icons">sync</span>
+                        Collect Data
+                    </button>
+                    <button class="btn" onclick="generateReport()">
+                        <span class="material-icons">description</span>
+                        Generate Report
+                    </button>
+                    <button class="btn btn-success" onclick="downloadReport()">
+                        <span class="material-icons">download</span>
+                        Download PDF
+                    </button>
+                </div>
+                <div id="status" class="status"></div>
+            </div>
         </div>
         <script>
             function showStatus(message, type) {
@@ -319,56 +509,62 @@ def home():
                 statusDiv.className = 'status ' + type;
                 statusDiv.innerHTML = message;
                 statusDiv.style.display = 'block';
+                setTimeout(() => {
+                    if (type !== 'error') {
+                        statusDiv.style.display = 'none';
+                    }
+                }, 10000);
             }
             
             function collectData() {
                 const btn = event.target;
+                const originalHTML = btn.innerHTML;
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Raccolta dati...<span class="spinner"></span>';
-                showStatus('Raccolta dati dai dispositivi Shelly in corso...', 'info');
+                btn.innerHTML = '<span class="material-icons">hourglass_empty</span>Processing...<span class="spinner"></span>';
+                showStatus('Collecting data from Shelly devices...', 'info');
                 
                 fetch('/collect-data', { method: 'POST' })
                     .then(response => response.json())
                     .then(data => {
                         btn.disabled = false;
-                        btn.innerHTML = '📊 Raccogli Dati Shelly Ora';
+                        btn.innerHTML = originalHTML;
                         if (data.status === 'success') {
-                            showStatus('✅ Dati raccolti: ' + data.entities_count + ' entità, salvate in CSV', 'success');
+                            showStatus('<strong>Success!</strong> Collected data from ' + data.entities_count + ' entities and saved to CSV', 'success');
                         } else {
-                            showStatus('❌ Errore: ' + data.message, 'error');
+                            showStatus('<strong>Error:</strong> ' + data.message, 'error');
                         }
                     })
                     .catch(error => {
                         btn.disabled = false;
-                        btn.innerHTML = '📊 Raccogli Dati Shelly Ora';
-                        showStatus('❌ Errore di rete: ' + error, 'error');
+                        btn.innerHTML = originalHTML;
+                        showStatus('<strong>Network Error:</strong> ' + error, 'error');
                     });
             }
             
             function generateReport() {
                 const btn = event.target;
+                const originalHTML = btn.innerHTML;
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Generazione in corso...<span class="spinner"></span>';
-                showStatus('Generazione del report in corso... Attendere prego.', 'info');
+                btn.innerHTML = '<span class="material-icons">hourglass_empty</span>Generating...<span class="spinner"></span>';
+                showStatus('Generating PDF report... Please wait.', 'info');
                 
                 fetch('/generate', { method: 'POST' })
                     .then(response => response.json())
                     .then(data => {
                         btn.disabled = false;
-                        btn.innerHTML = '🔄 Genera Report PDF';
+                        btn.innerHTML = originalHTML;
                         if (data.status === 'success') {
-                            showStatus('✅ Report generato con successo! Dimensione: ' + data.pdf_size_kb + ' KB<br>' +
-                                      '<a href="/download/latest" style="color: #fff; background: #4caf50; padding: 10px 20px; ' +
-                                      'text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">' +
-                                      '📥 Clicca qui per scaricare sul tuo PC</a>', 'success');
+                            showStatus('<strong>Success!</strong> Report generated successfully (' + data.pdf_size_kb + ' KB)<br>' +
+                                      '<a href="/download/latest" style="color: #81c784; text-decoration: underline; font-weight: 500;">' +
+                                      'Click here to download</a>', 'success');
                         } else {
-                            showStatus('❌ Errore: ' + data.message, 'error');
+                            showStatus('<strong>Error:</strong> ' + data.message, 'error');
                         }
                     })
                     .catch(error => {
                         btn.disabled = false;
-                        btn.innerHTML = '🔄 Genera Report PDF';
-                        showStatus('❌ Errore di rete: ' + error, 'error');
+                        btn.innerHTML = originalHTML;
+                        showStatus('<strong>Network Error:</strong> ' + error, 'error');
                     });
             }
             

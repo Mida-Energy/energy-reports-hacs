@@ -1,8 +1,8 @@
-# 🚀 Energy Reports - Home Assistant Add-on
+# Energy Reports - Home Assistant Add-on
 
 Generate professional PDF energy reports from your Shelly EM data directly in Home Assistant!
 
-## 📋 What it does
+## What it does
 
 - **Auto-discovers Shelly devices** and collects data automatically
 - **Generates PDF reports** with charts, statistics, and insights  
@@ -12,7 +12,7 @@ Generate professional PDF energy reports from your Shelly EM data directly in Ho
 
 ---
 
-## 🏠 Installation
+## Installation
 
 ### Step 1: Add Repository to Home Assistant
 
@@ -43,15 +43,15 @@ Generate professional PDF energy reports from your Shelly EM data directly in Ho
 1. Go to **Info** tab
 2. Click **Start**
 3. Enable **"Start on boot"** (recommended)
-4. The addon will appear in the **sidebar** of Home Assistant! 📊
+4. The addon will appear in the **sidebar** of Home Assistant!
 
 ---
 
-## 🎯 Usage
+## Usage
 
 ### Access the Integrated UI
 
-Once installed, **Energy Reports** appears directly in your **Home Assistant sidebar**! 🎉
+Once installed, **Energy Reports** appears directly in your **Home Assistant sidebar**!
 
 Just click on **"Energy Reports"** in the left menu - no need to configure anything else.
 
@@ -70,24 +70,24 @@ http://homeassistant.local:5000
 2. Click **"Generate Report"** button
 3. Wait 30-60 seconds
 4. Click **"Download PDF"**
-5. Done! 🎉
+5. Done!
 
 ---
 
-## ✅ Features
+## Features
 
-✅ Automatic Shelly EM data collection  
-✅ Professional PDF reports with charts  
-✅ Daily and general reports  
-✅ Energy consumption statistics  
-✅ Power usage analysis  
-✅ Hourly breakdown  
-✅ Recommendations and insights  
-✅ Works on all architectures (ARM, x86)  
+- Automatic Shelly EM data collection  
+- Professional PDF reports with charts  
+- Daily and general reports  
+- Energy consumption statistics  
+- Power usage analysis  
+- Hourly breakdown  
+- Recommendations and insights  
+- Works on all architectures (ARM, x86)  
 
 ---
 
-## 🔧 Configuration Options
+## Configuration Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -97,7 +97,7 @@ http://homeassistant.local:5000
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Test API Health
 
@@ -119,7 +119,7 @@ curl -o report.pdf http://homeassistant.local:5000/download/latest
 
 ---
 
-## 📁 File Structure
+## File Structure
 
 ```
 homeassistant-addon/
@@ -136,7 +136,7 @@ homeassistant-addon/
 
 ---
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Add-on won't start
 
@@ -166,17 +166,17 @@ Add-on page → Log tab
 
 ---
 
-## 🎯 Next Steps
+## Next Steps
 
-1. ✅ Install add-on
-2. ✅ Configure settings  
-3. ✅ Start add-on
-4. ✅ Add dashboard card
-5. ✅ Generate your first report!
+1. Install add-on
+2. Configure settings  
+3. Start add-on
+4. Add dashboard card
+5. Generate your first report!
 
 ---
 
-## 💡 Tips
+## Tips
 
 - **First time?** Let it collect data for a few hours before generating
 - **Reports too big?** Limit the date range in CSV files
@@ -185,10 +185,10 @@ Add-on page → Log tab
 
 ---
 
-## 📄 License
+## License
 
-Your project, your rules! 🚀
+Your project, your rules!
 
-## 🙏 Credits
+## Credits
 
-Built with ❤️ for the Home Assistant community.
+Built for the Home Assistant community.
