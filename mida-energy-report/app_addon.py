@@ -398,7 +398,7 @@ def discover_shelly_entities():
         
         logger.info(f"Total entities in HA: {len(all_states)}")
         
-        # First pass - find all Shelly entities with "energy" in name
+        # Find ALL Shelly sensor entities
         for state in all_states:
             entity_id = state.get('entity_id', '')
             attributes = state.get('attributes', {})
@@ -406,19 +406,16 @@ def discover_shelly_entities():
             device_class = attributes.get('device_class', '')
             unit = attributes.get('unit_of_measurement', '')
             
-            # Log all Shelly energy-related entities for debugging
-            if 'shelly' in entity_id.lower() and 'energy' in entity_id.lower():
-                logger.info(f"Found Shelly entity: {entity_id}")
-                logger.info(f"  Friendly: {friendly_name}")
-                logger.info(f"  Device class: {device_class}")
+            if 'shelly' in entity_id.lower() and entity_id.startswith('sensor.'):
+                logger.info(f"Shelly sensor: {entity_id}")
+                logger.info(f"  Name: {friendly_name}")
+                logger.info(f"  Class: {device_class}")
                 logger.info(f"  Unit: {unit}")
                 
-                # Include all energy-related Shelly sensors for now
+                # Include ALL Shelly sensors for now - let user decide
                 shelly_entities.append({
                     'entity_id': entity_id,
-                    'friendly_name': friendly_name,
-                    'device_class': device_class,
-                    'unit': unit
+                    'friendly_name': friendly_name
                 })
         
         logger.info(f"Discovery complete: {len(shelly_entities)} Shelly entities found")
