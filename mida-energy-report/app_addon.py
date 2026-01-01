@@ -916,8 +916,13 @@ def health():
 @app.route('/api/entities', methods=['GET'])
 def get_entities():
     """Get list of available Shelly entities"""
+    logger.info("=" * 60)
+    logger.info("API REQUEST: GET /api/entities")
+    logger.info("=" * 60)
+    
     try:
         entities = discover_shelly_entities()
+        logger.info(f"Discovered {len(entities)} entities")
         
         # Load selected entities from file
         config_file = DATA_PATH / 'selected_entities.json'
@@ -925,6 +930,13 @@ def get_entities():
         if config_file.exists():
             with open(config_file, 'r') as f:
                 selected = json.load(f)
+            logger.info(f"Loaded {len(selected)} selected entities from config")
+        else:
+            logger.info("No selected entities config found")
+        
+        logger.info("=" * 60)
+        logger.info(f"[SUCCESS] Returning {len(entities)} entities, {len(selected)} selected")
+        logger.info("=" * 60)
         
         return jsonify({
             'status': 'success',
@@ -932,6 +944,9 @@ def get_entities():
             'selected': selected
         })
     except Exception as e:
+        logger.error("=" * 60)
+        logger.error(f"[ERROR] Failed to get entities: {e}", exc_info=True)
+        logger.error("=" * 60)
         return jsonify({
             'status': 'error',
             'message': str(e)
