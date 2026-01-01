@@ -57,8 +57,10 @@ sys.stderr.flush()
 
 # Get paths from environment (set by add-on)
 DATA_PATH = Path(os.getenv('DATA_PATH', '/share/energy_reports/data'))
-OUTPUT_PATH = Path('/media/energy_reports')
-OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+TEMP_OUTPUT_PATH = Path('/share/energy_reports/output')  # For charts, temp files
+PDF_OUTPUT_PATH = Path('/media/energy_reports')  # Only for final PDFs
+TEMP_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+PDF_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 DATA_PATH.mkdir(parents=True, exist_ok=True)
 
 # Home Assistant API configuration
@@ -472,7 +474,7 @@ def home():
                 </div>
                 <div class="info-item">
                     <span class="info-label">Reports Path</span>
-                    <span class="info-value">""" + str(OUTPUT_PATH) + """</span>
+                    <span class="info-value">""" + str(PDF_OUTPUT_PATH) + """</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Auto-Collection</span>
@@ -587,12 +589,9 @@ def health():
 @app.route('/collect-data', methods=['POST'])
 def collect_data():
     """Manually trigger data collection from Shelly devices"""
-    sys.stdout.flush()
-    sys.stderr.flush()
     logger.info("=" * 60)
     logger.info("MANUAL DATA COLLECTION REQUESTED")
     logger.info("=" * 60)
-    sys.stdout.flush()
     
     try:
         # Discover Shelly entities
@@ -637,12 +636,9 @@ def collect_data():
 @app.route('/generate', methods=['POST'])
 def generate_report():
     """Generate PDF report from CSV data"""
-    sys.stdout.flush()
-    sys.stderr.flush()
     logger.info("=" * 60)
     logger.info("PDF REPORT GENERATION REQUESTED")
     logger.info("=" * 60)
-    sys.stdout.flush()
     
     try:
         logger.info(f"Checking data folder: {DATA_PATH}")
@@ -673,21 +669,26 @@ def generate_report():
         logger.info("Creating ShellyEnergyReport analyzer...")
         analyzer = ShellyEnergyReport(
             data_dir=str(DATA_PATH),
-            output_dir=str(OUTPUT_PATH.parent),
+            output_dir=str(TEMP_OUTPUT_PATH),
             correct_timestamps=True
         )
         
         logger.info("Running analysis and generating PDF...")
         analyzer.run_analysis()
         
-        # Check if PDF was created (report generator puts it in /media/generale/)
-        pdf_file = OUTPUT_PATH.parent / 'generale' / 'report_generale.pdf'
-        logger.info(f"Checking for PDF at: {pdf_file}")
+        # Check if PDF was created (report generator puts it in temp_output/generale/)
+        temp_pdf_file = TEMP_OUTPUT_PATH / 'generale' / 'report_generale.pdf'
+        logger.info(f"Checking for PDF at: {temp_pdf_file}")
         
-        if pdf_file.exists():
-            file_size = pdf_file.stat().st_size
+        if temp_pdf_file.exists():
+            # Move PDF to final location
+            final_pdf_file = PDF_OUTPUT_PATH / 'report_generale.pdf'
+            import shutil
+            shutil.copy2(temp_pdf_file, final_pdf_file)
+            
+            file_size = final_pdf_file.stat().st_size
             logger.info("=" * 60)
-            logger.info(f"✓ PDF GENERATED SUCCESSFULLY: {pdf_file}")
+            logger.info(f"✓ PDF GENERATED SUCCESSFULLY: {final_pdf_file}")
             logger.info(f"  File size: {round(file_size / 1024, 2)} KB")
             logger.info("=" * 60)
             
@@ -700,8 +701,8 @@ def generate_report():
             })
         else:
             logger.error("PDF not found after generation")
-            logger.error(f"Expected location: {pdf_file}")
-            logger.error(f"Output directory contents: {list(OUTPUT_PATH.parent.iterdir())}")
+            logger.error(f"Expected location: {temp_pdf_file}")
+            logger.error(f"Temp output directory contents: {list(TEMP_OUTPUT_PATH.iterdir()) if TEMP_OUTPUT_PATH.exists() else 'Not found'}")
             return jsonify({
                 'status': 'error',
                 'message': 'PDF generation failed - file not created'
@@ -725,14 +726,14 @@ def download_latest():
     logger.info("=" * 60)
     
     try:
-        pdf_file = OUTPUT_PATH.parent / 'generale' / 'report_generale.pdf'
+        pdf_file = PDF_OUTPUT_PATH / 'report_generale.pdf'
         logger.info(f"Looking for PDF at: {pdf_file}")
         
         if not pdf_file.exists():
             logger.error(f"PDF not found at {pdf_file}")
-            logger.error(f"Output directory exists: {OUTPUT_PATH.exists()}")
-            if OUTPUT_PATH.exists():
-                logger.error(f"Output directory contents: {list(OUTPUT_PATH.iterdir())}")
+            logger.error(f"PDF output directory exists: {PDF_OUTPUT_PATH.exists()}")
+            if PDF_OUTPUT_PATH.exists():
+                logger.error(f"PDF output directory contents: {list(PDF_OUTPUT_PATH.iterdir())}")
             return jsonify({
                 'status': 'error',
                 'message': 'No report found. Generate one first.'
@@ -769,7 +770,7 @@ def download_latest():
 def get_status():
     """Get status of reports and data"""
     try:
-        pdf_file = OUTPUT_PATH / 'report_generale.pdf'
+        pdf_file = PDF_OUTPUT_PATH / 'report_generale.pdf'
         
         # Count CSV files
         csv_count = len(list(DATA_PATH.glob("*.csv"))) if DATA_PATH.exists() else 0
@@ -809,13 +810,15 @@ def get_status():
 def initialize_addon():
     """Initialize addon when module is loaded"""
     DATA_PATH.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+    TEMP_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+    PDF_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     
     logger.info("=" * 60)
     logger.info("ENERGY REPORTS ADD-ON STARTING")
     logger.info("=" * 60)
     logger.info(f"Data path: {DATA_PATH}")
-    logger.info(f"Output path: {OUTPUT_PATH}")
+    logger.info(f"Temp output path: {TEMP_OUTPUT_PATH}")
+    logger.info(f"PDF output path: {PDF_OUTPUT_PATH}")
     logger.info(f"Supervisor token available: {bool(SUPERVISOR_TOKEN)}")
     logger.info("=" * 60)
     
