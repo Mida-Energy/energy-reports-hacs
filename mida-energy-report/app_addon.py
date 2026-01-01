@@ -721,7 +721,7 @@ def home():
             loadDevices();
             
             // Check if PDF exists on page load
-            fetch('/status')
+            fetch('status')
                 .then(response => response.json())
                 .then(data => {
                     if (data.has_report) {
@@ -749,7 +749,7 @@ def home():
                 btn.innerHTML = '<span class="material-icons">hourglass_empty</span>Processing...<span class="spinner"></span>';
                 showStatus('Fetching historical data from Home Assistant (last 7 days)...', 'info');
                 
-                fetch('/collect-data', { method: 'POST' })
+                fetch('collect-data', { method: 'POST' })
                     .then(response => response.json())
                     .then(data => {
                         btn.disabled = false;
@@ -774,7 +774,7 @@ def home():
                 btn.innerHTML = '<span class="material-icons">hourglass_empty</span>Generating...<span class="spinner"></span>';
                 showStatus('Generating PDF report... Please wait.', 'info');
                 
-                fetch('/generate', { method: 'POST' })
+                fetch('generate', { method: 'POST' })
                     .then(response => response.json())
                     .then(data => {
                         btn.disabled = false;
@@ -783,7 +783,7 @@ def home():
                             // Enable download button
                             document.getElementById('downloadBtn').disabled = false;
                             showStatus('<strong>Success!</strong> Report generated successfully (' + data.pdf_size_kb + ' KB)<br>' +
-                                      '<a href="/download/latest" style="color: #81c784; text-decoration: underline; font-weight: 500;">' +
+                                      '<a href="download/latest" style="color: #81c784; text-decoration: underline; font-weight: 500;">' +
                                       'Click here to download</a>', 'success');
                         } else {
                             showStatus('<strong>Error:</strong> ' + data.message, 'error');
@@ -804,7 +804,7 @@ def home():
                 }
                 
                 // For Ingress compatibility, open in same window
-                const downloadUrl = '/download/latest';
+                const downloadUrl = 'download/latest';
                 const link = document.createElement('a');
                 link.href = downloadUrl;
                 link.download = 'energy_report.pdf';
@@ -815,7 +815,7 @@ def home():
             }
             
             function loadDevices() {
-                fetch('/api/entities')
+                fetch('api/entities')
                     .then(response => {
                         console.log('Response status:', response.status);
                         console.log('Response headers:', response.headers);
@@ -888,7 +888,7 @@ def home():
                     return;
                 }
                 
-                fetch('/api/entities/select', {
+                fetch('api/entities/select', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ entity_ids: selectedEntities })
