@@ -396,14 +396,16 @@ def discover_shelly_entities():
         all_states = response.json()
         shelly_entities = []
         
-        # Look for Shelly ENERGY sensors only (not power, voltage, current, etc.)
+        # Look for Shelly ENERGY sensors only (accumulated energy counters)
+        # Exclude power (potenza), power_factor (fattore), voltage, current, etc.
         for state in all_states:
             entity_id = state.get('entity_id', '')
             friendly_name = state.get('attributes', {}).get('friendly_name', entity_id)
-            # Only include energy sensors, exclude power/voltage/current/apparent
+            
+            # Must contain 'energy' but NOT potenza/fattore/power/voltage/current
             if ('shelly' in entity_id.lower() and 
                 'energy' in entity_id.lower() and 
-                not any(x in entity_id.lower() for x in ['power', 'voltage', 'current', 'apparent', 'reactive'])):
+                not any(x in entity_id.lower() for x in ['potenza', 'fattore', 'power_factor', 'voltage', 'current', 'apparent', 'reactive'])):
                 shelly_entities.append({
                     'entity_id': entity_id,
                     'friendly_name': friendly_name
