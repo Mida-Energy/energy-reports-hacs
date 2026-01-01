@@ -819,6 +819,12 @@ def home():
                     .then(response => {
                         console.log('Response status:', response.status);
                         console.log('Response headers:', response.headers);
+                        
+                        // Check HTTP status before parsing
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
                         return response.text();
                     })
                     .then(text => {
