@@ -1060,10 +1060,185 @@ class ShellyEnergyReport:
         
         return general_dir
     
+    def _create_device_report(self, device_id: str, friendly_name: str, device_data: pd.DataFrame):
+        """Crea report specifico per un singolo dispositivo."""
+        # Sanitize device_id for filename
+        safe_device_name = device_id.replace('.', '_').replace('/', '_').replace(':', '_')
+        
+        # Create device-specific directory
+        device_dir = self.general_report_dir / safe_device_name
+        device_dir.mkdir(exist_ok=True)
+        
+        grafici_dir = device_dir / "grafici"
+        dati_dir = device_dir / "dati"
+        grafici_dir.mkdir(exist_ok=True)
+        dati_dir.mkdir(exist_ok=True)
+        
+        # Save device data
+        data_file = dati_dir / f"{safe_device_name}_dati.csv"
+        device_data.to_csv(data_file, index=False)
+        
+        # Analyze device data
+        analysis = {
+            'device_id': device_id,
+            'friendly_name': friendly_name,
+            'total_data_points': len(device_data),
+            'date_range': {
+                'start': device_data['datetime'].min().strftime('%Y-%m-%d %H:%M') if 'datetime' in device_data.columns else 'N/A',
+                'end': device_data['datetime'].max().strftime('%Y-%m-%d %H:%M') if 'datetime' in device_data.columns else 'N/A'
+            }
+        }
+        
+        if 'total_act_energy' in device_data.columns:
+            analysis['total_energy_kwh'] = device_data['total_act_energy'].sum() / 1000
+            analysis['avg_power_w'] = device_data['total_act_energy'].mean()
+            analysis['max_power_w'] = device_data['total_act_energy'].max()
+            analysis['min_power_w'] = device_data['total_act_energy'].min()
+        
+        if 'max_act_power' in device_data.columns:
+            analysis['peak_power_w'] = device_data['max_act_power'].max()
+            analysis['avg_power_w'] = device_data['max_act_power'].mean()
+        
+        # Save statistics
+        stats_file = dati_dir / f"{safe_device_name}_stats.json"
+        with open(stats_file, 'w', encoding='utf-8') as f:
+            json.dump(analysis, f, indent=2, default=str)
+        
+        # Create plots
+        plot_paths = self._create_device_plots(device_data, grafici_dir, safe_device_name)
+        
+        # Create PDF
+        pdf_path = device_dir / f"report_{safe_device_name}.pdf"
+        self._create_device_pdf(analysis, pdf_path, plot_paths, device_data)
+        
+        print(f"   ✅ Report creato: {pdf_path.name}")
+    
+    def _create_device_plots(self, device_data: pd.DataFrame, output_dir: Path, device_name: str) -> List[Path]:
+        """Crea grafici per un dispositivo."""
+        plot_paths = []
+        
+        if len(device_data) == 0:
+            return plot_paths
+        
+        # 1. Power trend over time
+        if 'datetime' in device_data.columns and 'max_act_power' in device_data.columns:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.plot(device_data['datetime'], device_data['max_act_power'], 'b-', linewidth=1.5, alpha=0.8)
+            ax.set_title(f'Andamento Potenza nel Tempo', fontsize=14, fontweight='bold')
+            ax.set_xlabel('Data/Ora', fontsize=12)
+            ax.set_ylabel('Potenza (W)', fontsize=12)
+            ax.grid(True, alpha=0.3)
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m %H:%M'))
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plot_path = output_dir / f"{device_name}_power_trend.png"
+            plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+            plot_paths.append(plot_path)
+            plt.close()
+        
+        # 2. Daily energy consumption
+        if 'date' in device_data.columns and 'total_act_energy' in device_data.columns:
+            daily_energy = device_data.groupby('date')['total_act_energy'].sum() / 1000  # kWh
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.bar(range(len(daily_energy)), daily_energy.values, alpha=0.7, color='steelblue')
+            ax.set_title(f'Consumo Energetico Giornaliero', fontsize=14, fontweight='bold')
+            ax.set_xlabel('Giorno', fontsize=12)
+            ax.set_ylabel('Energia (kWh)', fontsize=12)
+            ax.set_xticks(range(len(daily_energy)))
+            ax.set_xticklabels([d.strftime('%d/%m') for d in daily_energy.index], rotation=45)
+            ax.grid(True, alpha=0.3, axis='y')
+            plt.tight_layout()
+            plot_path = output_dir / f"{device_name}_daily_energy.png"
+            plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+            plot_paths.append(plot_path)
+            plt.close()
+        
+        # 3. Hourly profile
+        if 'hour' in device_data.columns and 'max_act_power' in device_data.columns:
+            hourly_avg = device_data.groupby('hour')['max_act_power'].mean()
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.bar(hourly_avg.index, hourly_avg.values, alpha=0.7, color='steelblue')
+            ax.set_title(f'Profilo Orario Medio', fontsize=14, fontweight='bold')
+            ax.set_xlabel('Ora del Giorno', fontsize=12)
+            ax.set_ylabel('Potenza Media (W)', fontsize=12)
+            ax.set_xticks(range(0, 24, 2))
+            ax.grid(True, alpha=0.3, axis='y')
+            plt.tight_layout()
+            plot_path = output_dir / f"{device_name}_hourly_profile.png"
+            plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+            plot_paths.append(plot_path)
+            plt.close()
+        
+        return plot_paths
+    
+    def _create_device_pdf(self, analysis: Dict, pdf_path: Path, plot_paths: List[Path], device_data: pd.DataFrame):
+        """Crea PDF per dispositivo usando il generatore esistente."""
+        try:
+            # Use the existing PDF generator with device-specific data
+            doc = SimpleDocTemplate(
+                str(pdf_path),
+                pagesize=A4,
+                rightMargin=72,
+                leftMargin=72,
+                topMargin=72,
+                bottomMargin=72
+            )
+            
+            story = []
+            
+            # Title
+            story.append(Paragraph(f"REPORT DISPOSITIVO", self.pdf_generator.styles['MainTitle']))
+            story.append(Paragraph(f"{analysis['friendly_name']}", self.pdf_generator.styles['SubTitle']))
+            story.append(Paragraph(f"Entity ID: {analysis['device_id']}", self.pdf_generator.styles['Normal']))
+            story.append(Paragraph(f"Generato il: {datetime.now().strftime('%d/%m/%Y %H:%M')}", self.pdf_generator.styles['Normal']))
+            story.append(Spacer(1, 20))
+            
+            # Summary
+            story.append(Paragraph("RIEPILOGO", self.pdf_generator.styles['SectionTitle']))
+            
+            summary_data = [
+                ["Metrica", "Valore", "Unità"],
+                ["Periodo", f"{analysis['date_range']['start']} - {analysis['date_range']['end']}", ""],
+                ["Energia totale", f"{analysis.get('total_energy_kwh', 0):.2f}", "kWh"],
+                ["Potenza media", f"{analysis.get('avg_power_w', 0):.1f}", "W"],
+                ["Potenza massima", f"{analysis.get('peak_power_w', 0):.1f}", "W"],
+                ["Punti dati", f"{analysis['total_data_points']}", "n°"]
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[5*cm, 4*cm, 2*cm])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')])
+            ]))
+            story.append(summary_table)
+            story.append(Spacer(1, 20))
+            
+            # Plots
+            story.append(Paragraph("GRAFICI", self.pdf_generator.styles['SectionTitle']))
+            for plot_path in plot_paths:
+                if plot_path.exists():
+                    img = Image(str(plot_path), width=15*cm, height=9*cm)
+                    story.append(img)
+                    story.append(Spacer(1, 10))
+            
+            doc.build(story)
+            print(f"      PDF salvato: {pdf_path.name}")
+            
+        except Exception as e:
+            print(f"      ❌ Errore creazione PDF: {e}")
+    
     def run_analysis(self):
-        """Esegue l'analisi completa."""
+        """Esegue l'analisi completa con report separati per dispositivo."""
         print("=" * 60)
-        print("ANALIZZATORE CONSUMI SHELLY EM - REPORT PDF PROFESSIONALI")
+        print("ANALIZZATORE CONSUMI SHELLY EM - REPORT PDF PER DISPOSITIVO")
         print("=" * 60)
         
         if not self.data_dir.exists():
@@ -1079,24 +1254,28 @@ class ShellyEnergyReport:
             print(f"❌ Errore nel caricamento dati: {e}")
             return
         
-        print("\n📅 CREAZIONE REPORT GIORNALIERI PDF")
-        print("-" * 40)
+        # Check if we have entity_id column for per-device analysis
+        if 'entity_id' not in self.all_data.columns:
+            print("⚠️  Colonna entity_id non trovata - creo report aggregato")
+            self._create_general_report()
+            return
         
-        unique_dates = self.all_data['date'].unique() if 'date' in self.all_data.columns else []
+        # Get unique devices
+        unique_devices = self.all_data['entity_id'].unique()
+        print(f"\n📱 Dispositivi trovati: {len(unique_devices)}")
         
-        if len(unique_dates) == 0:
-            print("⚠️  Nessuna data valida trovata nei dati")
-        else:
-            print(f"Giorni da analizzare: {len(unique_dates)}")
+        for device_id in unique_devices:
+            device_data = self.all_data[self.all_data['entity_id'] == device_id].copy()
+            friendly_name = device_data['friendly_name'].iloc[0] if 'friendly_name' in device_data.columns and len(device_data) > 0 else device_id
             
-            for date in sorted(unique_dates):
-                day_data = self.all_data[self.all_data['date'] == date]
-                if len(day_data) > 0:
-                    analysis = self._analyze_daily_data(date)
-                    self._create_daily_report(date, analysis, day_data)
+            print(f"\n📊 Analizzando dispositivo: {friendly_name}")
+            print(f"   Entity ID: {device_id}")
+            print(f"   Dati: {len(device_data)} righe")
+            
+            # Create device-specific report
+            self._create_device_report(device_id, friendly_name, device_data)
         
-        # Crea/Aggiorna report generale (sempre sovrascritto)
-        general_dir = self._create_general_report()
+        print(f"\n✅ Analisi completata per {len(unique_devices)} dispositivi")
         
         # Riepilogo finale
         print("\n" + "=" * 60)

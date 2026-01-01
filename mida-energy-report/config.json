@@ -30,14 +30,6 @@
   "homeassistant_api": true,
   "hassio_api": true,
   "hassio_role": "default",
-  "options": {
-    "data_path": "/share/energy_reports/data",
-    "auto_export_enabled": true,
-    "export_interval_hours": 1
-  },
-  "schema": {
-    "data_path": "str",
-    "auto_export_enabled": "bool",
-    "export_interval_hours": "int(1,24)"
-  }
+  "options": {},
+  "schema": {}
 }

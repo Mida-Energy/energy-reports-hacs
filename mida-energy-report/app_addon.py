@@ -152,39 +152,30 @@ def convert_history_to_csv(history_data, output_file):
         # Sort by timestamp
         all_rows.sort(key=lambda x: x['timestamp'])
         
-        # Group by timestamp and aggregate power values
-        aggregated = {}
-        for row in all_rows:
-            ts = row['timestamp']
-            if ts not in aggregated:
-                aggregated[ts] = {
-                    'timestamp': ts,
-                    'total_act_energy': 0,
-                    'max_act_power': 0,
-                    'avg_voltage': 230.0,
-                    'avg_current': 0
-                }
-            
-            # Sum power values
-            if 'potenza' in row['entity_id'].lower() and 'apparente' not in row['entity_id'].lower():
-                aggregated[ts]['max_act_power'] += row['value']
-                aggregated[ts]['total_act_energy'] += row['value']
-        
-        # Calculate current
-        for data in aggregated.values():
-            if data['avg_voltage'] > 0:
-                data['avg_current'] = data['max_act_power'] / data['avg_voltage']
-        
-        # Write to CSV
+        # Write to CSV with entity_id - NO AGGREGATION, keep per-device data
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file, 'w', newline='') as f:
-            fieldnames = ['timestamp', 'total_act_energy', 'max_act_power', 'avg_voltage', 'avg_current']
+            fieldnames = ['timestamp', 'entity_id', 'friendly_name', 'total_act_energy', 'max_act_power', 'avg_voltage', 'avg_current']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            for data in sorted(aggregated.values(), key=lambda x: x['timestamp']):
-                writer.writerow(data)
+            
+            for row in all_rows:
+                # Calculate metrics per device
+                power = row['value']
+                voltage = 230.0  # Default voltage
+                current = power / voltage if voltage > 0 else 0
+                
+                writer.writerow({
+                    'timestamp': row['timestamp'],
+                    'entity_id': row['entity_id'],
+                    'friendly_name': row['friendly_name'],
+                    'total_act_energy': power,
+                    'max_act_power': power,
+                    'avg_voltage': voltage,
+                    'avg_current': current
+                })
         
-        logger.info(f"[SUCCESS] Wrote {len(aggregated)} data points to {output_file}")
+        logger.info(f"[SUCCESS] Wrote {len(all_rows)} data points to {output_file}")
         return True
         
     except Exception as e:
@@ -671,8 +662,13 @@ def home():
                     <span class="info-value">""" + str(PDF_OUTPUT_PATH) + """</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Auto-Collection</span>
-                    <span class="badge """ + ("success" if os.getenv('AUTO_EXPORT', 'true') == 'true' else "") + """">""" + str(os.getenv('AUTO_EXPORT', 'true')) + """</span>
+                    <span class="info-label">Time Range (days)</span>
+                    <select id="timeRange" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px;">
+                        <option value="1">Last 24 hours</option>
+                        <option value="7" selected>Last 7 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
                 </div>
             </div>
 
@@ -692,6 +688,36 @@ def home():
                 <button class="btn" onclick="saveDeviceSelection()" style="margin-top: 16px; width: 100%;">
                     <span class="material-icons">save</span>
                     Save Selection
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons">schedule</span>
+                    Auto-Update Configuration
+                </div>
+                <p style="color: #9b9b9b; font-size: 14px; margin-bottom: 16px;">
+                    Automatically collect data and generate reports at regular intervals.
+                </p>
+                <div class="info-item" style="border: none; padding: 12px 0;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="autoUpdateEnabled" style="width: 20px; height: 20px; margin-right: 12px; cursor: pointer;">
+                        <span style="font-size: 14px;">Enable automatic updates</span>
+                    </label>
+                </div>
+                <div class="info-item" style="border: none; padding: 12px 0;">
+                    <span class="info-label">Update Interval</span>
+                    <select id="autoUpdateInterval" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px;">
+                        <option value="1">Every hour</option>
+                        <option value="6">Every 6 hours</option>
+                        <option value="12">Every 12 hours</option>
+                        <option value="24" selected>Daily</option>
+                        <option value="168">Weekly</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="saveAutoUpdateConfig()" style="margin-top: 12px;">
+                    <span class="material-icons">save</span>
+                    Save Configuration
                 </button>
             </div>
 
@@ -723,6 +749,7 @@ def home():
             
             // Load devices on page load
             loadDevices();
+            loadAutoUpdateConfig();
             
             // Check if PDF exists on page load
             fetch('status')
@@ -749,11 +776,16 @@ def home():
             function collectData() {
                 const btn = event.target;
                 const originalHTML = btn.innerHTML;
+                const days = document.getElementById('timeRange').value;
                 btn.disabled = true;
                 btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Processing...</span><span class="spinner"></span>';
-                showStatus('Fetching historical data from Home Assistant (last 7 days)...', 'info');
+                showStatus(`Fetching historical data from Home Assistant (last ${days} days)...`, 'info');
                 
-                fetch('collect-data', { method: 'POST' })
+                fetch('collect-data', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days: parseInt(days) })
+                })
                     .then(response => response.json())
                     .then(data => {
                         btn.disabled = false;
@@ -909,6 +941,40 @@ def home():
                     showStatus('<strong>Error:</strong> Failed to save selection', 'error');
                 });
             }
+            
+            function loadAutoUpdateConfig() {
+                fetch('api/auto-update/config')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            document.getElementById('autoUpdateEnabled').checked = data.config.enabled;
+                            document.getElementById('autoUpdateInterval').value = data.config.interval_hours;
+                        }
+                    })
+                    .catch(error => console.error('Failed to load auto-update config:', error));
+            }
+            
+            function saveAutoUpdateConfig() {
+                const enabled = document.getElementById('autoUpdateEnabled').checked;
+                const interval = parseInt(document.getElementById('autoUpdateInterval').value);
+                
+                fetch('api/auto-update/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled, interval_hours: interval })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showStatus('<strong>Success!</strong> Auto-update configuration saved.', 'success');
+                    } else {
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('<strong>Error:</strong> Failed to save configuration', 'error');
+                });
+            }
         </script>
     </body>
     </html>
@@ -981,6 +1047,56 @@ def select_entities():
         }), 500
 
 
+@app.route('/api/auto-update/config', methods=['GET'])
+def get_auto_update_config():
+    """Get auto-update configuration"""
+    try:
+        config_file = DATA_PATH / 'auto_update_config.json'
+        if config_file.exists():
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+        else:
+            config = {'enabled': False, 'interval_hours': 24}
+        
+        return jsonify({
+            'status': 'success',
+            'config': config
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/auto-update/config', methods=['POST'])
+def save_auto_update_config():
+    """Save auto-update configuration"""
+    try:
+        data = request.get_json()
+        config = {
+            'enabled': data.get('enabled', False),
+            'interval_hours': data.get('interval_hours', 24)
+        }
+        
+        config_file = DATA_PATH / 'auto_update_config.json'
+        with open(config_file, 'w') as f:
+            json.dump(config, f)
+        
+        logger.info(f"Auto-update config saved: {config}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Auto-update configuration saved',
+            'config': config
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 @app.route('/collect-data', methods=['POST'])
 def collect_data():
     """Manually trigger data collection from Home Assistant history"""
@@ -989,23 +1105,30 @@ def collect_data():
     logger.info("=" * 60)
     
     try:
-        # Always discover ALL Shelly entities (ignore selection)
-        logger.info("Discovering all Shelly devices...")
-        discovered = discover_shelly_entities()
-        entity_ids = [e['entity_id'] if isinstance(e, dict) else e for e in discovered]
-        
-        if not entity_ids:
-            logger.error("No Shelly entities found!")
+        # Load selected entities from file
+        config_file = DATA_PATH / 'selected_entities.json'
+        if not config_file.exists():
             return jsonify({
                 'status': 'error',
-                'message': 'No Shelly entities found in Home Assistant'
-            }), 404
+                'message': 'Please select at least one device before collecting data'
+            }), 400
         
-        logger.info(f"Found {len(entity_ids)} entities, fetching history...")
+        with open(config_file, 'r') as f:
+            entity_ids = json.load(f)
         
-        # Get history data from HA for last 7 days
+        if not entity_ids:
+            return jsonify({
+                'status': 'error',
+                'message': 'Please select at least one device before collecting data'
+            }), 400
+        
+        logger.info(f"Using {len(entity_ids)} selected entities, fetching history...")
+        
+        # Get time range from request or default to last 7 days
+        data = request.get_json() or {}
+        days = data.get('days', 7)
         end_time = datetime.now()
-        start_time = end_time - timedelta(days=7)
+        start_time = end_time - timedelta(days=days)
         
         history_data = get_history_from_ha(entity_ids, start_time, end_time)
         
@@ -1111,7 +1234,50 @@ def generate_report():
         logger.info("Running analysis and generating PDF...")
         analyzer.run_analysis()
         
-        # Check if PDF was created (report generator puts it in temp_output/generale/)
+        # Check for device-specific PDFs (new multi-device approach)
+        device_pdfs = list((TEMP_OUTPUT_PATH / 'generale').glob('*/report_*.pdf'))
+        
+        if device_pdfs:
+            # Multiple device reports generated
+            logger.info(f"Found {len(device_pdfs)} device-specific reports")
+            
+            # Copy all device PDFs to media folder
+            for device_pdf in device_pdfs:
+                dest_pdf = PDF_OUTPUT_PATH / device_pdf.name
+                shutil.copy2(device_pdf, dest_pdf)
+                logger.info(f"  Copied: {device_pdf.name}")
+            
+            # Create a summary file listing all reports
+            summary_file = PDF_OUTPUT_PATH / 'reports_summary.txt'
+            with open(summary_file, 'w') as f:
+                f.write(f"Energy Reports - Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Total devices: {len(device_pdfs)}\n\n")
+                f.write("Available Reports:\n")
+                for pdf in device_pdfs:
+                    f.write(f"  - {pdf.name}\n")
+            
+            total_size = sum(pdf.stat().st_size for pdf in device_pdfs)
+            file_size = total_size
+            
+            logger.info("=" * 60)
+            logger.info(f"[SUCCESS] PDF REPORTS GENERATED: {len(device_pdfs)} devices")
+            logger.info(f"  Total size: {round(file_size / 1024, 2)} KB")
+            logger.info("=" * 60)
+            
+            # Cleanup temp filtered directory
+            if selected_entities:
+                shutil.rmtree(report_data_dir, ignore_errors=True)
+            
+            return jsonify({
+                'status': 'success',
+                'message': f'{len(device_pdfs)} device reports generated successfully!',
+                'pdf_count': len(device_pdfs),
+                'pdf_size_kb': round(file_size / 1024, 2),
+                'timestamp': datetime.now().isoformat(),
+                'device_reports': [pdf.name for pdf in device_pdfs]
+            })
+        
+        # Fallback: Check for old-style general report
         temp_pdf_file = TEMP_OUTPUT_PATH / 'generale' / 'report_generale.pdf'
         logger.info(f"Checking for PDF at: {temp_pdf_file}")
         
@@ -1159,14 +1325,49 @@ def generate_report():
 
 @app.route('/download/latest')
 def download_latest():
-    """Download the latest PDF report"""
+    """Download the latest PDF report(s) - creates a zip if multiple devices"""
     logger.info("=" * 60)
     logger.info("PDF DOWNLOAD REQUESTED")
     logger.info("=" * 60)
     
     try:
+        # Check for multiple device reports
+        device_pdfs = list(PDF_OUTPUT_PATH.glob('report_*.pdf'))
+        
+        if len(device_pdfs) > 1:
+            # Multiple reports - create zip
+            import zipfile
+            from io import BytesIO
+            
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for pdf_path in device_pdfs:
+                    zip_file.write(pdf_path, pdf_path.name)
+            
+            zip_buffer.seek(0)
+            logger.info(f"Created zip with {len(device_pdfs)} reports")
+            
+            return send_file(
+                zip_buffer,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name=f'energy_reports_{datetime.now().strftime("%Y%m%d")}.zip'
+            )
+        
+        elif len(device_pdfs) == 1:
+            # Single report
+            pdf_file = device_pdfs[0]
+            logger.info(f"Sending single report: {pdf_file.name}")
+            return send_file(
+                pdf_file,
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=pdf_file.name
+            )
+        
+        # Fallback to old general report
         pdf_file = PDF_OUTPUT_PATH / 'report_generale.pdf'
-        logger.info(f"Looking for PDF at: {pdf_file}")
+        logger.info(f"Looking for general PDF at: {pdf_file}")
         
         if not pdf_file.exists():
             logger.error(f"PDF not found at {pdf_file}")
@@ -1209,12 +1410,18 @@ def download_latest():
 def get_status():
     """Get status of reports and data"""
     try:
-        pdf_file = PDF_OUTPUT_PATH / 'report_generale.pdf'
+        # Check for device-specific reports
+        device_pdfs = list(PDF_OUTPUT_PATH.glob('report_*.pdf')) if PDF_OUTPUT_PATH.exists() else []
+        
+        # Fallback to general report
+        general_pdf = PDF_OUTPUT_PATH / 'report_generale.pdf'
         
         # Count CSV files
         csv_count = len(list(DATA_PATH.glob("*.csv"))) if DATA_PATH.exists() else 0
         
-        if not pdf_file.exists():
+        has_reports = len(device_pdfs) > 0 or general_pdf.exists()
+        
+        if not has_reports:
             return jsonify({
                 'status': 'no_report',
                 'has_report': False,
@@ -1222,13 +1429,22 @@ def get_status():
                 'data_path': str(DATA_PATH)
             })
         
-        # Get PDF info
-        file_stat = pdf_file.stat()
+        # Get latest report info
+        if device_pdfs:
+            latest_pdf = max(device_pdfs, key=lambda p: p.stat().st_mtime)
+            file_stat = latest_pdf.stat()
+            report_count = len(device_pdfs)
+        else:
+            latest_pdf = general_pdf
+            file_stat = latest_pdf.stat()
+            report_count = 1
+        
         file_date = datetime.fromtimestamp(file_stat.st_mtime)
         
         return jsonify({
             'status': 'ready',
             'has_report': True,
+            'report_count': report_count,
             'last_generated': file_date.isoformat(),
             'last_generated_human': file_date.strftime('%d/%m/%Y %H:%M:%S'),
             'pdf_size_kb': round(file_stat.st_size / 1024, 2),
