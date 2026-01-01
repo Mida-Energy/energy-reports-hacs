@@ -708,13 +708,13 @@ def home():
                 </p>
                 <div class="info-item" style="border: none; padding: 12px 0;">
                     <label style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="checkbox" id="autoUpdateEnabled" style="width: 20px; height: 20px; margin-right: 12px; cursor: pointer;">
+                        <input type="checkbox" id="autoUpdateEnabled" onchange="saveAutoUpdateConfig()" style="width: 20px; height: 20px; margin-right: 12px; cursor: pointer;">
                         <span style="font-size: 14px;">Enable automatic updates</span>
                     </label>
                 </div>
                 <div class="info-item" style="border: none; padding: 12px 0;">
                     <span class="info-label">Update Interval</span>
-                    <select id="autoUpdateInterval" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px;">
+                    <select id="autoUpdateInterval" onchange="saveAutoUpdateConfig()" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px;">
                         <option value="1">Every hour</option>
                         <option value="6">Every 6 hours</option>
                         <option value="12">Every 12 hours</option>
@@ -722,10 +722,6 @@ def home():
                         <option value="168">Weekly</option>
                     </select>
                 </div>
-                <button class="btn" onclick="saveAutoUpdateConfig()" style="margin-top: 12px;">
-                    <span class="material-icons">save</span>
-                    Save Configuration
-                </button>
             </div>
 
             <div class="card">
@@ -773,11 +769,13 @@ def home():
                 statusDiv.className = 'status ' + type;
                 statusDiv.innerHTML = message;
                 statusDiv.style.display = 'block';
-                setTimeout(() => {
-                    if (type !== 'error') {
+                
+                // Only auto-hide success messages, keep info and error messages visible
+                if (type === 'success') {
+                    setTimeout(() => {
                         statusDiv.style.display = 'none';
-                    }
-                }, 10000);
+                    }, 5000);
+                }
             }
             
             function collectData() {
@@ -786,7 +784,12 @@ def home():
                 const days = document.getElementById('timeRange').value;
                 btn.disabled = true;
                 btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Processing...</span><span class="spinner"></span>';
-                showStatus(`Fetching historical data from Home Assistant (last ${days} days)...`, 'info');
+                
+                // Clear any previous status message
+                document.getElementById('status').style.display = 'none';
+                
+                // Show progress message
+                showStatus(`Fetching historical data from Home Assistant (last ${days} days)... Please wait.`, 'info');
                 
                 fetch('collect-data', { 
                     method: 'POST',
@@ -797,6 +800,10 @@ def home():
                     .then(data => {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
+                        
+                        // Clear progress message and show result
+                        document.getElementById('status').style.display = 'none';
+                        
                         if (data.status === 'success') {
                             showStatus('<strong>Success!</strong> Fetched historical data from Home Assistant and saved to CSV', 'success');
                         } else {
@@ -806,6 +813,7 @@ def home():
                     .catch(error => {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
+                        document.getElementById('status').style.display = 'none';
                         showStatus('<strong>Network Error:</strong> ' + error, 'error');
                     });
             }
@@ -815,6 +823,11 @@ def home():
                 const originalHTML = btn.innerHTML;
                 btn.disabled = true;
                 btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Generating...</span><span class="spinner"></span>';
+                
+                // Clear any previous status message
+                document.getElementById('status').style.display = 'none';
+                
+                // Show progress message
                 showStatus('Generating PDF report... Please wait.', 'info');
                 
                 fetch('generate', { method: 'POST' })
@@ -822,6 +835,10 @@ def home():
                     .then(data => {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
+                        
+                        // Clear progress message and show result
+                        document.getElementById('status').style.display = 'none';
+                        
                         if (data.status === 'success') {
                             // Enable download button
                             document.getElementById('downloadBtn').disabled = false;
@@ -835,6 +852,7 @@ def home():
                     .catch(error => {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
+                        document.getElementById('status').style.display = 'none';
                         showStatus('<strong>Network Error:</strong> ' + error, 'error');
                     });
             }
