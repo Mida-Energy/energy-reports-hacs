@@ -25,7 +25,12 @@ app = Flask(__name__)
 # Ingress support for Home Assistant
 @app.before_request
 def handle_ingress():
-    """Handle Home Assistant Ingress path prefix"""
+    """Handle Home Assistant Ingress path prefix and log requests"""
+    # Log request
+    logger.info(f">>> REQUEST: {request.method} {request.path}")
+    sys.stdout.flush()
+    
+    # Handle Ingress path
     ingress_path = request.headers.get('X-Ingress-Path', '')
     if ingress_path:
         request.environ['SCRIPT_NAME'] = ingress_path
@@ -49,12 +54,6 @@ else:
 # Force unbuffered output
 sys.stdout.flush()
 sys.stderr.flush()
-
-# Log all requests
-@app.before_request
-def log_request():
-    logger.info(f">>> REQUEST: {request.method} {request.path}")
-    sys.stdout.flush()
 
 # Get paths from environment (set by add-on)
 DATA_PATH = Path(os.getenv('DATA_PATH', '/share/energy_reports/data'))
