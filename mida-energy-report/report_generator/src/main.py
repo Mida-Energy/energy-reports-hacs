@@ -640,6 +640,27 @@ class ShellyEnergyReport:
         self.data_files = []
         self.all_data = None
         self.pdf_generator = PDFReportGenerator()
+        self.selected_entities = self._load_selected_entities()
+    
+    def _load_selected_entities(self):
+        """Load selected entities from selection file if exists."""
+        selection_file = Path("/data/selected_entities.json")
+        if not selection_file.exists():
+            # Try alternative path
+            selection_file = self.data_dir.parent / "selected_entities.json"
+        
+        if selection_file.exists():
+            try:
+                with open(selection_file, 'r') as f:
+                    data = json.load(f)
+                    entities = data.get('entity_ids', [])
+                    if entities:
+                        print(f"[INFO] Loaded {len(entities)} selected entities from {selection_file}")
+                        return entities
+            except Exception as e:
+                print(f"[WARN] Could not load selected entities: {e}")
+        
+        return None
         
     def _find_data_files(self):
         """Find all CSV files in the data folder."""
@@ -1262,7 +1283,22 @@ class ShellyEnergyReport:
         
         # Get unique devices
         unique_devices = self.all_data['entity_id'].unique()
-        print(f"[INFO] Devices found: {len(unique_devices)}")
+        print(f"[INFO] Total devices in data: {len(unique_devices)}")
+        
+        # Filter by selected entities if available
+        if self.selected_entities:
+            print(f"[INFO] Filtering by {len(self.selected_entities)} selected entities")
+            unique_devices = [d for d in unique_devices if d in self.selected_entities]
+            print(f"[INFO] Devices to process after filtering: {len(unique_devices)}")
+            
+            if len(unique_devices) == 0:
+                print("[WARN] No selected devices found in data. Possible entity_id mismatch.")
+                print("[INFO] Available entity_ids in data:")
+                for eid in self.all_data['entity_id'].unique():
+                    print(f"  - {eid}")
+                return
+        else:
+            print(f"[INFO] No selection filter - processing all {len(unique_devices)} devices")
         
         for device_id in unique_devices:
             device_data = self.all_data[self.all_data['entity_id'] == device_id].copy()
@@ -1279,16 +1315,18 @@ class ShellyEnergyReport:
         
         # Final summary
         print("=" * 60)
-        print("ANALISI COMPLETATA CON SUCCESSO")
+        print("ANALYSIS COMPLETED SUCCESSFULLY")
         print("=" * 60)
-        print("RIEPILOGO OUTPUT GENERATI:")
-        print(f"  - File CSV elaborati: {len(self.data_files)}")
-        print(f"  - Report per dispositivo: {len(unique_devices)}")
-        print(f"  - Dati totali analizzati: {len(self.all_data):,} righe")
-        print("PERCORSI PRINCIPALI:")
-        print(f"  - Report giornalieri: {self.daily_reports_dir}")
-        print(f"  - Report generale: {self.general_report_dir}")
-        print(f"  - File output: {self.general_report_dir}")
+        print("GENERATED OUTPUT SUMMARY:")
+        print(f"  - CSV files processed: {len(self.data_files)}")
+        print(f"  - Reports generated: {len(unique_devices)}")
+        if self.selected_entities:
+            print(f"  - Selected entities: {len(self.selected_entities)}")
+        print(f"  - Total data analyzed: {len(self.all_data):,} rows")
+        print("MAIN PATHS:")
+        print(f"  - Daily reports: {self.daily_reports_dir}")
+        print(f"  - General report: {self.general_report_dir}")
+        print(f"  - Output files: {self.general_report_dir}")
         print("=" * 60)
 
 
