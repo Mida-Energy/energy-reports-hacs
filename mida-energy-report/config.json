@@ -1,8 +1,9 @@
 {
   "name": "Energy Reports",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "slug": "energy-reports",
   "description": "Generate professional PDF energy reports from Shelly EM data with Home Assistant-style UI and automatic scheduling",
+  "url": "https://github.com/Mida-Energy/energy-reports",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "application",
   "boot": "auto",

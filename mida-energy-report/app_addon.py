@@ -752,10 +752,6 @@ def home():
             <div class="header">
                 <h1><span class="material-icons">assessment</span>Energy Reports</h1>
                 <p class="subtitle">Generate and manage your energy consumption reports</p>
-                <a href="https://github.com/Mida-Energy/energy-reports" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; margin-top: 8px; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">
-                    <span class="material-icons" style="font-size: 16px;">code</span>
-                    View on GitHub
-                </a>
             </div>
             
             <div class="card">
@@ -773,7 +769,7 @@ def home():
                 </div>
                 <div class="info-item">
                     <span class="info-label">Time Range (days)</span>
-                    <select id="timeRange" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px;">
+                    <select id="timeRange" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px; min-width: 200px;">
                         <option value="1">Last 24 hours</option>
                         <option value="7" selected>Last 7 days</option>
                         <option value="30">Last 30 days</option>
@@ -782,7 +778,7 @@ def home():
                 </div>
                 <div class="info-item">
                     <span class="info-label">Automatic Report Generation</span>
-                    <select id="autoReportSchedule" onchange="saveAutoReportSchedule()" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px;">
+                    <select id="autoReportSchedule" onchange="saveAutoReportSchedule()" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px; min-width: 200px;">
                         <option value="0" selected>Never</option>
                         <option value="24">Every day</option>
                         <option value="168">Every week</option>
@@ -1286,7 +1282,7 @@ def get_auto_update_config():
             with open(config_file, 'r') as f:
                 config = json.load(f)
         else:
-            config = {'enabled': False, 'interval_hours': 24}
+            config = {'enabled': False, 'interval_hours': 0}
         
         return jsonify({
             'status': 'success',

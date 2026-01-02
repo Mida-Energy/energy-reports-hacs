@@ -2,6 +2,18 @@
 
 All notable changes to the Energy Reports add-on will be documented in this file.
 
+## [2.0.1] - 2026-01-02
+
+### Changed
+- Default automatic report generation set to "Never" instead of "Daily"
+- GitHub repository link moved to addon store page instead of UI header
+- Simplified automatic report generation configuration (single dropdown)
+- Removed checkbox for enabling automatic updates
+
+### Fixed
+- Default configuration now correctly shows "Never" for automatic report generation
+- UI centered "Generate Report" button with auto-width sizing
+
 ## [2.0.0] - 2026-01-02
 
 ### Added
