@@ -53,7 +53,7 @@ else:
 # Get paths from environment (set by add-on)
 DATA_PATH = Path(os.getenv('DATA_PATH', '/share/energy_reports/data'))
 TEMP_OUTPUT_PATH = Path('/share/energy_reports/output')  # For charts, temp files
-PDF_OUTPUT_PATH = Path('/media/energy_reports')  # Only for final PDFs
+PDF_OUTPUT_PATH = Path('/share/energy_reports/pdfs')  # For final PDFs
 TEMP_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 PDF_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 DATA_PATH.mkdir(parents=True, exist_ok=True)
@@ -410,10 +410,10 @@ def discover_shelly_entities():
                 # Include power sensors (W) or energy sensors (kWh)
                 # Exclude apparent_power (VA) and power_factor
                 if device_class == 'power' or device_class == 'energy' or unit in ['W', 'kW', 'kWh', 'Wh']:
-                    logger.info(f"✓ Found usable sensor: {entity_id}")
-                    logger.info(f"  Name: {friendly_name}")
-                    logger.info(f"  Class: {device_class}")
-                    logger.info(f"  Unit: {unit}")
+                    logger.info(f"[INFO] Found usable sensor: {entity_id}")
+                    logger.info(f"[INFO]   Name: {friendly_name}")
+                    logger.info(f"[INFO]   Class: {device_class}")
+                    logger.info(f"[INFO]   Unit: {unit}")
                     
                     shelly_entities.append({
                         'entity_id': entity_id,
@@ -1264,12 +1264,16 @@ def generate_report():
             # Build expected PDF names from selected entities
             for entity_id in selected_entities:
                 pdf_name = f"report_{entity_id}.pdf"
-                pdf_paths = list((TEMP_OUTPUT_PATH / 'generale').glob(f'*/{pdf_name}'))
-                device_pdfs.extend(pdf_paths)
-            logger.info(f"Looking for {len(selected_entities)} selected device reports")
+                pdf_path = (TEMP_OUTPUT_PATH / 'generale' / pdf_name)
+                if pdf_path.exists():
+                    device_pdfs.append(pdf_path)
+                    logger.info(f"[INFO] Found PDF for {entity_id}")
+                else:
+                    logger.info(f"[WARN] PDF not found: {pdf_name}")
+            logger.info(f"[INFO] Looking for {len(selected_entities)} selected device reports, found {len(device_pdfs)}")
         else:
             # No selection - get all generated PDFs
-            device_pdfs = list((TEMP_OUTPUT_PATH / 'generale').glob('*/report_*.pdf'))
+            device_pdfs = list((TEMP_OUTPUT_PATH / 'generale').glob('report_*.pdf'))
         
         if device_pdfs:
             # Multiple device reports generated
