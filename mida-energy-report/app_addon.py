@@ -1375,7 +1375,7 @@ def download_latest():
                 zip_buffer,
                 mimetype='application/zip',
                 as_attachment=True,
-                download_name=f'energy_reports_{datetime.now().strftime("%Y%m%d")}.zip'
+                download_name=f'energy_reports_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
             )
         
         elif len(device_pdfs) == 1:

@@ -653,7 +653,12 @@ class ShellyEnergyReport:
             try:
                 with open(selection_file, 'r') as f:
                     data = json.load(f)
-                    entities = data.get('entity_ids', [])
+                    # Handle both formats: array directly or object with entity_ids key
+                    if isinstance(data, list):
+                        entities = data
+                    else:
+                        entities = data.get('entity_ids', [])
+                    
                     if entities:
                         print(f"[INFO] Loaded {len(entities)} selected entities from {selection_file}")
                         return entities
