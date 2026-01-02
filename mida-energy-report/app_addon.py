@@ -68,7 +68,86 @@ HEADERS = {
 
 # Data collection thread
 collection_thread = None
+auto_update_thread = None
 stop_collection = False
+
+
+def auto_update_worker():
+    """Background worker that periodically generates reports based on configuration"""
+    global stop_collection
+    logger.info("[INFO] Auto-update worker started")
+    
+    last_run = None
+    
+    while not stop_collection:
+        try:
+            # Read configuration
+            config_file = DATA_PATH / 'auto_update_config.json'
+            if not config_file.exists():
+                time.sleep(60)  # Check every minute
+                continue
+            
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+            
+            if not config.get('enabled', False):
+                time.sleep(60)
+                continue
+            
+            interval_hours = config.get('interval_hours', 24)
+            
+            # Check if it's time to run
+            now = datetime.now()
+            if last_run is None or (now - last_run).total_seconds() >= interval_hours * 3600:
+                logger.info(f"[INFO] Auto-update: Starting scheduled report generation")
+                
+                # Load selected entities
+                entities_file = DATA_PATH / 'selected_entities.json'
+                if not entities_file.exists():
+                    logger.warning("[WARN] Auto-update: No entities selected, skipping")
+                    time.sleep(60)
+                    continue
+                
+                with open(entities_file, 'r') as f:
+                    entity_ids = json.load(f)
+                
+                if not entity_ids:
+                    logger.warning("[WARN] Auto-update: Empty entity list, skipping")
+                    time.sleep(60)
+                    continue
+                
+                # Collect data
+                logger.info(f"[INFO] Auto-update: Collecting data for {len(entity_ids)} devices")
+                end_time = datetime.now()
+                start_time = end_time - timedelta(days=7)  # Default 7 days
+                
+                history_data = get_history_from_ha(entity_ids, start_time, end_time)
+                if history_data:
+                    csv_file = DATA_PATH / 'all.csv'
+                    convert_history_to_csv(history_data, csv_file, entity_ids)
+                    logger.info(f"[SUCCESS] Auto-update: Data saved to {csv_file}")
+                    
+                    # Generate reports
+                    logger.info("[INFO] Auto-update: Generating PDF reports")
+                    report_gen = ShellyEnergyReport(
+                        csv_file=str(csv_file),
+                        output_dir=str(TEMP_OUTPUT_PATH)
+                    )
+                    report_gen.generate_all()
+                    logger.info("[SUCCESS] Auto-update: Reports generated successfully")
+                    
+                    last_run = now
+                else:
+                    logger.error("[ERROR] Auto-update: Failed to collect data")
+                
+            # Sleep for 5 minutes before next check
+            time.sleep(300)
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Auto-update worker error: {e}")
+            time.sleep(60)
+    
+    logger.info("[INFO] Auto-update worker stopped")
 
 
 def get_history_from_ha(entity_ids, start_time=None, end_time=None):
@@ -482,22 +561,25 @@ def home():
             }
             .card { 
                 background: #1c1c1c;
-                padding: 24px;
-                border-radius: 8px;
-                margin-bottom: 16px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                padding: 20px;
+                border-radius: 12px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+                border: 1px solid rgba(255,255,255,0.05);
             }
             .card-title {
-                color: #e1e1e1;
-                font-size: 16px;
+                color: #ffffff;
+                font-size: 18px;
                 font-weight: 500;
-                margin-bottom: 16px;
+                margin-bottom: 20px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid #2a2a2a;
                 display: flex;
                 align-items: center;
             }
             .card-title .material-icons {
-                margin-right: 8px;
-                font-size: 20px;
+                margin-right: 12px;
+                font-size: 24px;
                 color: #03a9f4;
             }
             .info-item {
@@ -527,30 +609,39 @@ def home():
                 background: #03a9f4;
                 color: white;
                 border: none;
-                padding: 16px 24px;
+                padding: 12px 20px;
                 font-size: 14px;
                 font-weight: 500;
-                border-radius: 4px;
+                border-radius: 8px;
                 cursor: pointer;
-                transition: all 0.2s;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                display: flex;
+                transition: all 0.2s ease;
+                text-transform: none;
+                letter-spacing: 0.25px;
+                display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 2px 4px rgba(3, 169, 244, 0.3);
+                box-shadow: 0 2px 6px rgba(3, 169, 244, 0.4);
+                position: relative;
             }
             .btn .material-icons {
                 margin-right: 8px;
                 font-size: 20px;
+                line-height: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             .btn:hover { 
                 background: #0288d1;
-                box-shadow: 0 4px 8px rgba(3, 169, 244, 0.4);
-                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(3, 169, 244, 0.5);
+                transform: translateY(-2px);
+            }
+            .btn:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(3, 169, 244, 0.3);
             }
             .btn:disabled { 
-                background: #3a3a3a;
+                background: #2a2a2a;
                 color: #666;
                 cursor: not-allowed;
                 transform: none;
@@ -558,11 +649,11 @@ def home():
             }
             .btn-success { 
                 background: #4caf50;
-                box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+                box-shadow: 0 2px 6px rgba(76, 175, 80, 0.4);
             }
             .btn-success:hover { 
                 background: #388e3c;
-                box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.5);
             }
             .status { 
                 padding: 16px;
@@ -616,18 +707,21 @@ def home():
                 color: #4caf50;
             }
             .device-item {
-                padding: 12px;
-                border-bottom: 1px solid #2a2a2a;
+                padding: 16px 12px;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
                 display: flex;
                 align-items: center;
                 cursor: pointer;
-                transition: background 0.2s;
+                transition: all 0.2s ease;
+                border-radius: 8px;
+                margin-bottom: 4px;
             }
             .device-item:hover {
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(3, 169, 244, 0.08);
+                border-bottom-color: rgba(3, 169, 244, 0.2);
             }
             .device-item:last-child {
-                border-bottom: none;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
             }
             .device-checkbox {
                 width: 20px;
@@ -717,8 +811,8 @@ def home():
                     </div>
                 </div>
                 
-                <button class="btn" onclick="generateReportComplete()" style="width: 100%; padding: 14px; font-size: 16px; background: #4CAF50;">
-                    <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">play_arrow</span>
+                <button class="btn btn-success" onclick="generateReportComplete()" style="width: 100%; padding: 16px; font-size: 16px; font-weight: 500;">
+                    <span class="material-icons" style="margin-right: 8px;">play_arrow</span>
                     Generate Report
                 </button>
                 
@@ -971,11 +1065,11 @@ def home():
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
-                                        <button class="btn" onclick="downloadSpecificReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;">
-                                            <span class="material-icons" style="font-size: 20px; line-height: 1;">download</span>
+                                        <button class="btn" onclick="downloadSpecificReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #03a9f4;">
+                                            <span class="material-icons" style="font-size: 22px; line-height: 0;">download</span>
                                         </button>
-                                        <button class="btn" onclick="deleteReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: #e57373;">
-                                            <span class="material-icons" style="font-size: 20px; line-height: 1;">delete</span>
+                                        <button class="btn" onclick="deleteReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #f44336; box-shadow: 0 2px 6px rgba(244, 67, 54, 0.4);">
+                                            <span class="material-icons" style="font-size: 22px; line-height: 0;">delete</span>
                                         </button>
                                     </div>
                                 `;
@@ -1555,6 +1649,8 @@ def get_status():
 # Initialize on module load (for Gunicorn)
 def initialize_addon():
     """Initialize addon when module is loaded"""
+    global auto_update_thread
+    
     DATA_PATH.mkdir(parents=True, exist_ok=True)
     TEMP_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     PDF_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -1568,7 +1664,12 @@ def initialize_addon():
     logger.info(f"Supervisor token available: {bool(SUPERVISOR_TOKEN)}")
     logger.info("=" * 60)
     
-    # Background collection disabled - using Home Assistant history API instead
+    # Start auto-update worker thread
+    if auto_update_thread is None:
+        auto_update_thread = threading.Thread(target=auto_update_worker, daemon=True)
+        auto_update_thread.start()
+        logger.info("[SUCCESS] Auto-update worker thread started")
+    
     logger.info("Background collection disabled - data will be fetched from HA history on demand")
 
 
