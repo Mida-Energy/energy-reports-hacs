@@ -686,16 +686,40 @@ def home():
             <div class="card">
                 <div class="card-title">
                     <span class="material-icons">devices</span>
-                    Device Selection
+                    Device Selection & Report Generation
                 </div>
                 <p style="color: #9b9b9b; font-size: 14px; margin-bottom: 16px;">
-                    Select which Shelly devices to include in reports. All device data is collected automatically from Home Assistant history.
+                    Select devices and generate their energy reports. The system will automatically collect the latest data from Home Assistant and generate PDF reports.
                 </p>
-                <div id="deviceList" style="max-height: 300px; overflow-y: auto;">
-                    <div style="text-align: center; padding: 20px; color: #9b9b9b;">
-                        <span class="spinner"></span> Loading devices...
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #9b9b9b; font-size: 13px; margin-bottom: 8px;">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">date_range</span>
+                        Data Collection Period
+                    </label>
+                    <select id="timeRange" style="width: 100%; background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 14px;">
+                        <option value="7" selected>Last 7 days</option>
+                        <option value="14">Last 14 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #9b9b9b; font-size: 13px; margin-bottom: 8px;">Select Devices</label>
+                    <div id="deviceList" style="max-height: 300px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 8px;">
+                        <div style="text-align: center; padding: 20px; color: #9b9b9b;">
+                            <span class="spinner"></span> Loading devices...
+                        </div>
                     </div>
                 </div>
+                
+                <button class="btn" onclick="generateReportComplete()" style="width: 100%; padding: 14px; font-size: 16px; background: #4CAF50;">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">play_arrow</span>
+                    Collect Data & Generate Report
+                </button>
+                
+                <div id="status" class="status" style="margin-top: 12px;"></div>
             </div>
 
             <div class="card">
@@ -726,28 +750,6 @@ def home():
 
             <div class="card">
                 <div class="card-title">
-                    <span class="material-icons">manage_history</span>
-                    Actions
-                </div>
-                <div class="button-grid">
-                    <button class="btn" onclick="collectData()">
-                        <span class="material-icons">sync</span>
-                        Collect Data
-                    </button>
-                    <button class="btn" onclick="generateReport()">
-                        <span class="material-icons">description</span>
-                        Generate Report
-                    </button>
-                    <button class="btn btn-success" id="downloadBtn" onclick="downloadReport()" disabled>
-                        <span class="material-icons">download</span>
-                        Download PDF
-                    </button>
-                </div>
-                <div id="status" class="status"></div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
                     <span class="material-icons">history</span>
                     Reports History
                 </div>
@@ -770,16 +772,6 @@ def home():
             loadAutoUpdateConfig();
             loadReports();
             
-            // Check if PDF exists on page load
-            fetch('status')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.has_report) {
-                        document.getElementById('downloadBtn').disabled = false;
-                    }
-                })
-                .catch(err => console.log('Status check failed:', err));
-            
             function showStatus(message, type) {
                 const statusDiv = document.getElementById('status');
                 statusDiv.className = 'status ' + type;
@@ -794,101 +786,112 @@ def home():
                 }
             }
             
-            function collectData() {
+            function generateReportComplete() {
                 const btn = event.target;
                 const originalHTML = btn.innerHTML;
                 const days = document.getElementById('timeRange').value;
+                
                 btn.disabled = true;
                 btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Processing...</span><span class="spinner"></span>';
                 
                 // Clear any previous status message
                 document.getElementById('status').style.display = 'none';
                 
-                // Show progress message
-                showStatus(`Fetching historical data from Home Assistant (last ${days} days)... Please wait.`, 'info');
+                // Step 1: Collect data
+                showStatus(`<strong>Step 1/2:</strong> Fetching data from Home Assistant (last ${days} days)...`, 'info');
                 
                 fetch('collect-data', { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ days: parseInt(days) })
                 })
-                    .then(response => response.json())
-                    .then(data => {
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Step 2: Generate report
+                        showStatus('<strong>Step 2/2:</strong> Generating PDF report... Please wait.', 'info');
+                        
+                        return fetch('generate', { method: 'POST' })
+                            .then(response => response.json())
+                            .then(genData => {
+                                btn.disabled = false;
+                                btn.innerHTML = originalHTML;
+                                document.getElementById('status').style.display = 'none';
+                                
+                                if (genData.status === 'success') {
+                                    showStatus('<strong>Success!</strong> Report generated successfully (' + genData.pdf_size_kb + ' KB). Check Reports History below.', 'success');
+                                    loadReports();
+                                } else {
+                                    showStatus('<strong>Error:</strong> ' + genData.message, 'error');
+                                }
+                            });
+                    } else {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
-                        
-                        // Clear progress message and show result
                         document.getElementById('status').style.display = 'none';
-                        
-                        if (data.status === 'success') {
-                            showStatus('<strong>Success!</strong> Fetched historical data from Home Assistant and saved to CSV', 'success');
-                        } else {
-                            showStatus('<strong>Error:</strong> ' + data.message, 'error');
-                        }
-                    })
-                    .catch(error => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML;
-                        document.getElementById('status').style.display = 'none';
-                        showStatus('<strong>Network Error:</strong> ' + error, 'error');
-                    });
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    document.getElementById('status').style.display = 'none';
+                    showStatus('<strong>Network Error:</strong> ' + error, 'error');
+                });
             }
             
-            function generateReport() {
+            function generateReportComplete() {
                 const btn = event.target;
                 const originalHTML = btn.innerHTML;
+                const days = document.getElementById('timeRange').value;
+                
                 btn.disabled = true;
-                btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Generating...</span><span class="spinner"></span>';
+                btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Processing...</span><span class="spinner"></span>';
                 
                 // Clear any previous status message
                 document.getElementById('status').style.display = 'none';
                 
-                // Show progress message
-                showStatus('Generating PDF report... Please wait.', 'info');
+                // Step 1: Collect data
+                showStatus(`<strong>Step 1/2:</strong> Fetching data from Home Assistant (last ${days} days)...`, 'info');
                 
-                fetch('generate', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
+                fetch('collect-data', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days: parseInt(days) })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Step 2: Generate report
+                        showStatus('<strong>Step 2/2:</strong> Generating PDF report... Please wait.', 'info');
+                        
+                        return fetch('generate', { method: 'POST' })
+                            .then(response => response.json())
+                            .then(genData => {
+                                btn.disabled = false;
+                                btn.innerHTML = originalHTML;
+                                document.getElementById('status').style.display = 'none';
+                                
+                                if (genData.status === 'success') {
+                                    showStatus('<strong>Success!</strong> Report generated successfully (' + genData.pdf_size_kb + ' KB). Check Reports History below.', 'success');
+                                    loadReports();
+                                } else {
+                                    showStatus('<strong>Error:</strong> ' + genData.message, 'error');
+                                }
+                            });
+                    } else {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
-                        
-                        // Clear progress message and show result
                         document.getElementById('status').style.display = 'none';
-                        
-                        if (data.status === 'success') {
-                            // Enable download button
-                            document.getElementById('downloadBtn').disabled = false;
-                            showStatus('<strong>Success!</strong> Report generated successfully (' + data.pdf_size_kb + ' KB)<br>' +
-                                      '<a href="download/latest" style="color: #81c784; text-decoration: underline; font-weight: 500;">' +
-                                      'Click here to download</a>', 'success');
-                        } else {
-                            showStatus('<strong>Error:</strong> ' + data.message, 'error');
-                        }
-                    })
-                    .catch(error => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML;
-                        document.getElementById('status').style.display = 'none';
-                        showStatus('<strong>Network Error:</strong> ' + error, 'error');
-                    });
-            }
-            
-            function downloadReport() {
-                const pdfExists = !document.getElementById('downloadBtn').disabled;
-                if (!pdfExists) {
-                    showStatus('<strong>No PDF available.</strong> Please generate a report first.', 'error');
-                    return;
-                }
-                
-                // For Ingress compatibility, open in same window
-                const downloadUrl = 'download/latest';
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = 'energy_report.pdf';
-                link.target = '_self';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    document.getElementById('status').style.display = 'none';
+                    showStatus('<strong>Network Error:</strong> ' + error, 'error');
+                });
             }
             
             function loadDevices() {
@@ -1029,24 +1032,27 @@ def home():
                                 const item = document.createElement('div');
                                 item.className = 'device-item';
                                 item.style.cursor = 'default';
+                                item.style.display = 'flex';
+                                item.style.alignItems = 'center';
+                                item.style.justifyContent = 'space-between';
                                 
                                 item.innerHTML = `
-                                    <div class="device-info" style="flex: 1;">
+                                    <div class="device-info" style="flex: 1; min-width: 0;">
                                         <div class="device-name" style="display: flex; align-items: center; gap: 8px;">
                                             <span class="material-icons" style="font-size: 20px; color: #4CAF50;">description</span>
-                                            <span>${report.filename}</span>
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${report.filename}</span>
                                         </div>
                                         <div class="device-id" style="display: flex; gap: 16px; margin-top: 4px;">
                                             <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">schedule</span> ${report.created}</span>
                                             <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">folder</span> ${report.size_kb} KB</span>
                                         </div>
                                     </div>
-                                    <div style="display: flex; gap: 8px;">
-                                        <button class="btn" onclick="downloadSpecificReport('${report.filename}')" style="padding: 8px 16px;">
-                                            <span class="material-icons" style="font-size: 18px;">download</span>
+                                    <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                                        <button class="btn" onclick="downloadSpecificReport('${report.filename}')" style="padding: 10px; min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+                                            <span class="material-icons" style="font-size: 20px;">download</span>
                                         </button>
-                                        <button class="btn" onclick="deleteReport('${report.filename}')" style="padding: 8px 16px; background: #e57373;">
-                                            <span class="material-icons" style="font-size: 18px;">delete</span>
+                                        <button class="btn" onclick="deleteReport('${report.filename}')" style="padding: 10px; min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: #e57373;">
+                                            <span class="material-icons" style="font-size: 20px;">delete</span>
                                         </button>
                                     </div>
                                 `;
