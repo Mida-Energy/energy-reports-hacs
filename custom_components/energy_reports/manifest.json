@@ -1,10 +1,11 @@
 {
   "domain": "energy_reports",
   "name": "Energy Reports",
-  "version": "0.1.0",
-  "documentation": "https://github.com/Mida-Energy/energy-reports",
-  "issue_tracker": "https://github.com/Mida-Energy/energy-reports/issues",
+  "codeowners": ["@Mida-Energy"],
   "dependencies": ["frontend", "history", "http"],
+  "documentation": "https://github.com/Mida-Energy/energy-reports",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Mida-Energy/energy-reports/issues",
   "requirements": [
     "pandas>=2.1.4",
     "numpy>=1.26.0",
@@ -24,6 +25,5 @@
     "tqdm>=4.66.1",
     "rich>=13.7.0"
   ],
-  "iot_class": "local_polling",
-  "codeowners": ["@Mida-Energy"]
+  "version": "0.1.0"
 }

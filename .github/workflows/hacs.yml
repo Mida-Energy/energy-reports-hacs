@@ -23,7 +23,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: HACS Action
-        uses: hacs/action@v1
+        uses: hacs/action@main
         with:
           category: integration
 
