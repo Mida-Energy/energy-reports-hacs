@@ -1,43 +1,43 @@
 # Energy Reports - Home Assistant (HACS)
 
-Genera report PDF professionali dai tuoi Shelly direttamente in Home Assistant, con una UI integrata nella sidebar.
+Generate professional PDF reports from your Shelly sensors directly in Home Assistant, with an embedded sidebar UI.
 
-## Requisiti
+## Requirements
 
 - Home Assistant Core/Supervised/OS
-- HACS installato
-- Integrazione Shelly già configurata
+- HACS installed
+- Shelly integration already configured
 
-## Installazione tramite HACS
+## Installation via HACS
 
 1. HACS → **Integrations**
-2. Menu in alto a destra → **Custom repositories**
-3. Aggiungi questo repo con categoria **Integration**
-4. Cerca **Energy Reports** e installa
-5. Riavvia Home Assistant
+2. Top-right menu → **Custom repositories**
+3. Add this repo with category **Integration**
+4. Search for **Energy Reports** and install
+5. Restart Home Assistant
 
-> Dopo il riavvio, comparirà la voce **Energy Reports** nella sidebar.
+> After restart, **Energy Reports** appears in the sidebar.
 
-## Uso
+## Usage
 
-1. Apri **Energy Reports** dalla sidebar
-2. Seleziona i dispositivi
-3. **Collect Data** (recupera lo storico da HA)
-4. **Generate Report** per creare i PDF
-5. Scarica o elimina i report dalla sezione **Reports History**
+1. Open **Energy Reports** from the sidebar
+2. Select devices
+3. **Collect Data** (fetches history from HA)
+4. **Generate Report** to create PDFs
+5. Download or delete reports from **Reports History**
 
-## Dove vengono salvati i file
+## File locations
 
-- Dati CSV: `/config/energy_reports/data`
-- Output temporanei: `/config/energy_reports/output`
-- PDF finali: `/config/energy_reports/pdfs`
+- CSV data: `/config/energy_reports/data`
+- Temporary output: `/config/energy_reports/output`
+- Final PDFs: `/config/energy_reports/pdfs`
 
-## Note importanti
+## Important notes
 
-- Questa versione è una **custom integration HACS** (non add-on).
-- Non usa Supervisor né Ingress: la UI è servita internamente da Home Assistant.
-- Ogni istanza HA genera i propri report in modo indipendente (perfetto per più istanze).
-- Se la voce in sidebar non compare, puoi aggiungere un pannello manuale:
+- This is a **HACS custom integration** (not an add-on).
+- No Supervisor/Ingress: the UI is served internally by Home Assistant.
+- Each HA instance generates its own reports (ideal for multiple instances).
+- If the sidebar item does not appear, add a manual panel:
   ```yaml
   panel_iframe:
     energy_reports:
@@ -48,15 +48,15 @@ Genera report PDF professionali dai tuoi Shelly direttamente in Home Assistant, 
 
 ## Troubleshooting
 
-### Non vedo la voce in sidebar
+### Sidebar entry is missing
 
-- Verifica di aver riavviato HA dopo l’installazione.
-- Controlla i log per errori dell’integrazione.
+- Make sure you restarted HA after installation.
+- Check logs for integration errors.
 
-### Nessun PDF generato
+### No PDF generated
 
-- Verifica che ci siano dati storici per i sensori selezionati.
-- Controlla in `/config/energy_reports/data` che esista `all.csv`.
+- Verify there is history data for the selected sensors.
+- Check that `/config/energy_reports/data/all.csv` exists.
 
 ---
 
