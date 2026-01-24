@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "documentation": "https://github.com/Mida-Energy/energy-reports",
   "issue_tracker": "https://github.com/Mida-Energy/energy-reports/issues",
-  "dependencies": ["frontend", "recorder"],
+  "dependencies": ["frontend", "history", "http"],
   "requirements": [
     "pandas>=2.1.4",
     "numpy>=1.26.0",

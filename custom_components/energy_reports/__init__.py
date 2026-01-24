@@ -6,6 +6,9 @@ import asyncio
 import logging
 from datetime import timedelta
 
+import voluptuous as vol
+from homeassistant.helpers import config_validation as cv
+
 from homeassistant.components import frontend, history
 from homeassistant.core import HomeAssistant
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
@@ -14,6 +17,9 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = vol.Schema({DOMAIN: cv.empty_config_schema}, extra=vol.ALLOW_EXTRA)
+
 from .views import (
     EnergyReportsApiView,
     EnergyReportsAutoUpdateConfigView,
