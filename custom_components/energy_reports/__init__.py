@@ -10,7 +10,7 @@ from homeassistant.helpers import config_validation as cv
 
 from homeassistant.components import frontend, history
 from homeassistant.core import HomeAssistant
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP, EVENT_HOMEASSISTANT_STARTED
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
@@ -136,27 +136,31 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop)
 
-    try:
-        panel_js = Path(__file__).parent / "frontend" / "energy-reports-panel.js"
-        hass.http.register_static_path(
-            "/energy_reports/energy-reports-panel.js", str(panel_js), cache_headers=True
-        )
-        frontend.async_register_panel(
-            hass,
-            component_name="custom",
-            sidebar_title=PANEL_TITLE,
-            sidebar_icon=PANEL_ICON,
-            frontend_url_path=DOMAIN,
-            config={
-                "_panel_custom": {
-                    "name": "energy-reports-panel",
-                    "module_url": "/energy_reports/energy-reports-panel.js",
-                }
-            },
-            require_admin=False,
-        )
-    except Exception:
-        # If panel registration fails, the integration will still work via direct URL.
-        pass
+    def _register_panel(_: object | None = None) -> None:
+        try:
+            panel_js = Path(__file__).parent / "frontend" / "energy-reports-panel.js"
+            hass.http.register_static_path(
+                "/energy_reports/energy-reports-panel.js",
+                str(panel_js),
+                cache_headers=True,
+            )
+            frontend.async_register_panel(
+                hass,
+                component_name="custom",
+                sidebar_title=PANEL_TITLE,
+                sidebar_icon=PANEL_ICON,
+                frontend_url_path=DOMAIN,
+                config={
+                    "_panel_custom": {
+                        "name": "energy-reports-panel",
+                        "module_url": "/energy_reports/energy-reports-panel.js",
+                    }
+                },
+                require_admin=False,
+            )
+        except Exception as exc:
+            _LOGGER.warning("Failed to register panel: %s", exc)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _register_panel)
 
     return True
