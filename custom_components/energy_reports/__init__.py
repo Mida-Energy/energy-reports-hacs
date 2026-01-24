@@ -18,7 +18,10 @@ from .const import DOMAIN, PANEL_ICON, PANEL_TITLE
 
 _LOGGER = logging.getLogger(__name__)
 
-CONFIG_SCHEMA = vol.Schema({DOMAIN: cv.empty_config_schema}, extra=vol.ALLOW_EXTRA)
+CONFIG_SCHEMA = vol.Schema(
+    {DOMAIN: vol.Schema({vol.Optional("panel_token"): cv.string})},
+    extra=vol.ALLOW_EXTRA,
+)
 
 from .views import (
     EnergyReportsApiView,
@@ -49,11 +52,14 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     for path in (base_path, data_path, output_path, pdf_path):
         path.mkdir(parents=True, exist_ok=True)
 
+    panel_token = config.get(DOMAIN, {}).get("panel_token", "")
+
     hass.data[DOMAIN] = {
         "base_path": base_path,
         "data_path": data_path,
         "output_path": output_path,
         "pdf_path": pdf_path,
+        "panel_token": panel_token,
     }
 
     os.environ["DATA_PATH"] = str(data_path)
@@ -140,20 +146,34 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     def _register_panel(_: object | None = None) -> None:
         try:
-            frontend.async_register_panel(
-                hass,
-                component_name="custom",
-                sidebar_title=PANEL_TITLE,
-                sidebar_icon=PANEL_ICON,
-                frontend_url_path=DOMAIN,
-                config={
-                    "_panel_custom": {
-                        "name": "energy-reports-panel",
-                        "module_url": "/api/energy_reports/panel.js",
-                    }
-                },
-                require_admin=False,
-            )
+            if hasattr(frontend, "async_register_panel"):
+                frontend.async_register_panel(
+                    hass,
+                    component_name="custom",
+                    sidebar_title=PANEL_TITLE,
+                    sidebar_icon=PANEL_ICON,
+                    frontend_url_path=DOMAIN,
+                    config={
+                        "_panel_custom": {
+                            "name": "energy-reports-panel",
+                            "module_url": "/api/energy_reports/panel.js",
+                        }
+                    },
+                    require_admin=False,
+                )
+            else:
+                token_suffix = (
+                    f"?token={panel_token}" if panel_token else ""
+                )
+                frontend.async_register_built_in_panel(
+                    hass,
+                    component_name="iframe",
+                    sidebar_title=PANEL_TITLE,
+                    sidebar_icon=PANEL_ICON,
+                    frontend_url_path=DOMAIN,
+                    config={"url": f"/api/energy_reports/{token_suffix}"},
+                    require_admin=False,
+                )
         except Exception as exc:
             _LOGGER.warning("Failed to register panel: %s", exc)
 
