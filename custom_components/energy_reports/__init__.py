@@ -163,7 +163,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 )
             else:
                 token_suffix = f"?token={panel_token}" if panel_token else ""
-                await frontend.async_register_built_in_panel(
+                frontend.async_register_built_in_panel(
                     hass,
                     component_name="iframe",
                     sidebar_title=PANEL_TITLE,
