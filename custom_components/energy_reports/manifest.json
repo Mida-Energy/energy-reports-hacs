@@ -1,0 +1,29 @@
+{
+  "domain": "energy_reports",
+  "name": "Energy Reports",
+  "version": "0.1.0",
+  "documentation": "https://github.com/Mida-Energy/energy-reports",
+  "issue_tracker": "https://github.com/Mida-Energy/energy-reports/issues",
+  "dependencies": ["frontend", "recorder"],
+  "requirements": [
+    "pandas>=2.1.4",
+    "numpy>=1.26.0",
+    "matplotlib>=3.8.2",
+    "seaborn>=0.13.0",
+    "reportlab>=4.0.4",
+    "requests>=2.31.0",
+    "python-dateutil>=2.8.2",
+    "pytz>=2023.3.post1",
+    "tzdata>=2023.3",
+    "pillow>=10.1.0",
+    "openpyxl>=3.1.2",
+    "pyarrow>=14.0.1",
+    "lz4>=4.3.2",
+    "scipy>=1.11.4",
+    "pydantic>=2.5.0",
+    "tqdm>=4.66.1",
+    "rich>=13.7.0"
+  ],
+  "iot_class": "local_polling",
+  "codeowners": ["@Mida-Energy"]
+}

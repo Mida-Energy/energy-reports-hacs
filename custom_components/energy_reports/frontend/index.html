@@ -1,0 +1,600 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Energy Reports</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, sans-serif;
+                background: #111111;
+                color: #e1e1e1;
+                padding: 20px;
+                min-height: 100vh;
+            }
+            .container { 
+                max-width: 1000px; 
+                margin: 0 auto;
+            }
+            .header {
+                background: #1c1c1c;
+                padding: 24px;
+                border-radius: 8px;
+                margin-bottom: 24px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            }
+            h1 { 
+                color: #e1e1e1;
+                font-size: 28px;
+                font-weight: 400;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+            }
+            h1 .material-icons {
+                margin-right: 12px;
+                font-size: 32px;
+                color: #03a9f4;
+            }
+            .subtitle {
+                color: #9b9b9b;
+                font-size: 14px;
+                font-weight: 300;
+            }
+            .card { 
+                background: #1c1c1c;
+                padding: 20px;
+                border-radius: 12px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+                border: 1px solid rgba(255,255,255,0.05);
+            }
+            .card-title {
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: 500;
+                margin-bottom: 20px;
+                padding-bottom: 12px;
+                border-bottom: 1px solid #2a2a2a;
+                display: flex;
+                align-items: center;
+            }
+            .card-title .material-icons {
+                margin-right: 12px;
+                font-size: 24px;
+                color: #03a9f4;
+            }
+            .info-item {
+                padding: 8px 0;
+                border-bottom: 1px solid #2a2a2a;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .info-item:last-child { border-bottom: none; }
+            .info-label {
+                color: #9b9b9b;
+                font-size: 14px;
+            }
+            .info-value {
+                color: #e1e1e1;
+                font-size: 14px;
+                font-family: monospace;
+            }
+            .button-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 16px;
+                margin-bottom: 16px;
+            }
+            .btn { 
+                background: #03a9f4;
+                color: white;
+                border: none;
+                padding: 12px 20px;
+                font-size: 14px;
+                font-weight: 500;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                text-transform: none;
+                letter-spacing: 0.25px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 6px rgba(3, 169, 244, 0.4);
+                position: relative;
+            }
+            .btn .material-icons {
+                margin-right: 8px;
+                font-size: 20px;
+                line-height: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .btn:hover { 
+                background: #0288d1;
+                box-shadow: 0 4px 12px rgba(3, 169, 244, 0.5);
+                transform: translateY(-2px);
+            }
+            .btn:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 4px rgba(3, 169, 244, 0.3);
+            }
+            .btn:disabled { 
+                background: #2a2a2a;
+                color: #666;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+            .btn-success { 
+                background: #4caf50;
+                box-shadow: 0 2px 6px rgba(76, 175, 80, 0.4);
+            }
+            .btn-success:hover { 
+                background: #388e3c;
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.5);
+            }
+            .status { 
+                padding: 16px;
+                margin: 16px 0;
+                border-radius: 4px;
+                display: none;
+                border-left: 4px solid;
+            }
+            .status.success { 
+                background: rgba(76, 175, 80, 0.1);
+                color: #81c784;
+                border-color: #4caf50;
+            }
+            .status.error { 
+                background: rgba(244, 67, 54, 0.1);
+                color: #e57373;
+                border-color: #f44336;
+            }
+            .status.info { 
+                background: rgba(3, 169, 244, 0.1);
+                color: #4fc3f7;
+                border-color: #03a9f4;
+            }
+            .spinner { 
+                border: 2px solid rgba(255,255,255,0.3);
+                border-top: 2px solid white;
+                border-radius: 50%;
+                width: 16px;
+                height: 16px;
+                animation: spin 0.8s linear infinite;
+                display: inline-block;
+                vertical-align: middle;
+                margin-left: 8px;
+                flex-shrink: 0;
+            }
+            @keyframes spin { 
+                0% { transform: rotate(0deg); } 
+                100% { transform: rotate(360deg); } 
+            }
+            .badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 500;
+                background: rgba(3, 169, 244, 0.2);
+                color: #03a9f4;
+            }
+            .badge.success {
+                background: rgba(76, 175, 80, 0.2);
+                color: #4caf50;
+            }
+            .device-item {
+                padding: 16px 12px;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                border-radius: 8px;
+                margin-bottom: 4px;
+            }
+            .device-item:hover {
+                background: rgba(3, 169, 244, 0.08);
+                border-bottom-color: rgba(3, 169, 244, 0.2);
+            }
+            .device-item:last-child {
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+            }
+            .device-checkbox {
+                width: 20px;
+                height: 20px;
+                margin-right: 12px;
+                cursor: pointer;
+                accent-color: #03a9f4;
+            }
+            .device-info {
+                flex: 1;
+            }
+            .device-name {
+                color: #e1e1e1;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            .device-id {
+                color: #9b9b9b;
+                font-size: 12px;
+                margin-top: 2px;
+                font-family: monospace;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1><span class="material-icons">assessment</span>Energy Reports</h1>
+                <p class="subtitle">Generate and manage your energy consumption reports</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons">settings</span>
+                    Configuration
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Data Path</span>
+                    <span class="info-value">{{DATA_PATH}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Reports Path</span>
+                    <span class="info-value">{{PDF_PATH}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Time Range (days)</span>
+                    <select id="timeRange" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px; min-width: 200px;">
+                        <option value="1">Last 24 hours</option>
+                        <option value="7" selected>Last 7 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Automatic Report Generation</span>
+                    <select id="autoReportSchedule" onchange="saveAutoReportSchedule()" style="background: #2a2a2a; color: #e1e1e1; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 14px; min-width: 200px;">
+                        <option value="0" selected>Never</option>
+                        <option value="24">Every day</option>
+                        <option value="168">Every week</option>
+                        <option value="336">Every 2 weeks</option>
+                        <option value="720">Every month</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons">devices</span>
+                    Device Selection & Report Generation
+                </div>
+                <p style="color: #9b9b9b; font-size: 14px; margin-bottom: 16px;">
+                    Select devices and generate their energy reports. The system will automatically collect the latest data from Home Assistant and generate PDF reports.
+                </p>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #9b9b9b; font-size: 13px; margin-bottom: 8px;">Select Devices</label>
+                    <div id="deviceList" style="max-height: 300px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 8px;">
+                        <div style="text-align: center; padding: 20px; color: #9b9b9b;">
+                            <span class="spinner"></span> Loading devices...
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: center; margin-top: 16px;">
+                    <button class="btn btn-success" onclick="generateReportComplete()" style="padding: 16px 32px; font-size: 16px; font-weight: 500;">
+                        <span class="material-icons" style="margin-right: 8px;">play_arrow</span>
+                        Generate Report
+                    </button>
+                </div>
+                
+                <div id="status" class="status" style="margin-top: 12px;"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons">history</span>
+                    Reports History
+                </div>
+                <p style="color: #9b9b9b; font-size: 14px; margin-bottom: 16px;">
+                    View and download previously generated reports.
+                </p>
+                <div id="reportsList" style="max-height: 400px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 20px; color: #9b9b9b;">
+                        <span class="spinner"></span> Loading reports...
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            let availableEntities = [];
+            let selectedEntities = [];
+            
+            // Load devices on page load
+            loadDevices();
+            loadAutoUpdateConfig();
+            loadReports();
+            
+            function showStatus(message, type) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.className = 'status ' + type;
+                statusDiv.innerHTML = message;
+                statusDiv.style.display = 'block';
+                
+                // Only auto-hide success messages, keep info and error messages visible
+                if (type === 'success') {
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                    }, 5000);
+                }
+            }
+            
+            function generateReportComplete() {
+                const btn = event.target;
+                const originalHTML = btn.innerHTML;
+                const days = document.getElementById('timeRange').value;
+                
+                btn.disabled = true;
+                btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Processing...</span><span class="spinner"></span>';
+                
+                // Clear any previous status message
+                document.getElementById('status').style.display = 'none';
+                
+                // Step 1: Collect data
+                showStatus(`<strong>Step 1/2:</strong> Fetching data from Home Assistant (last ${days} days)...`, 'info');
+                
+                fetch('collect-data', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days: parseInt(days) })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Step 2: Generate report
+                        showStatus('<strong>Step 2/2:</strong> Generating PDF report... Please wait.', 'info');
+                        
+                        return fetch('generate', { method: 'POST' })
+                            .then(response => response.json())
+                            .then(genData => {
+                                btn.disabled = false;
+                                btn.innerHTML = originalHTML;
+                                document.getElementById('status').style.display = 'none';
+                                
+                                if (genData.status === 'success') {
+                                    showStatus('<strong>Success!</strong> Report generated successfully (' + genData.pdf_size_kb + ' KB). Check Reports History below.', 'success');
+                                    loadReports();
+                                } else {
+                                    showStatus('<strong>Error:</strong> ' + genData.message, 'error');
+                                }
+                            });
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                        document.getElementById('status').style.display = 'none';
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    document.getElementById('status').style.display = 'none';
+                    showStatus('<strong>Network Error:</strong> ' + error, 'error');
+                });
+            }
+            
+            function loadDevices() {
+                fetch('api/entities')
+                    .then(response => {
+                        console.log('Response status:', response.status);
+                        console.log('Response headers:', response.headers);
+                        
+                        // Check HTTP status before parsing
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        return response.text();
+                    })
+                    .then(text => {
+                        console.log('Raw response:', text);
+                        const data = JSON.parse(text);
+                        if (data.status === 'success') {
+                            availableEntities = data.entities;
+                            selectedEntities = data.selected || [];
+                            renderDeviceList();
+                        } else {
+                            document.getElementById('deviceList').innerHTML = 
+                                '<div style="text-align: center; padding: 20px; color: #e57373;">Error: ' + (data.message || 'Unknown error') + '</div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Failed to load devices:', error);
+                        document.getElementById('deviceList').innerHTML = 
+                            '<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load devices: ' + error.message + '</div>';
+                    });
+            }
+            
+            function renderDeviceList() {
+                const container = document.getElementById('deviceList');
+                if (availableEntities.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No Shelly devices found</div>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                availableEntities.forEach(entity => {
+                    const isSelected = selectedEntities.includes(entity.entity_id);
+                    const item = document.createElement('div');
+                    item.className = 'device-item';
+                    item.onclick = () => toggleDevice(entity.entity_id);
+                    
+                    item.innerHTML = `
+                        <input type="checkbox" class="device-checkbox" ${isSelected ? 'checked' : ''} 
+                               onclick="event.stopPropagation(); toggleDevice('${entity.entity_id}')">
+                        <div class="device-info">
+                            <div class="device-name">${entity.friendly_name}</div>
+                            <div class="device-id">${entity.entity_id}</div>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+            
+            function toggleDevice(entityId) {
+                const index = selectedEntities.indexOf(entityId);
+                if (index > -1) {
+                    selectedEntities.splice(index, 1);
+                } else {
+                    selectedEntities.push(entityId);
+                }
+                renderDeviceList();
+                
+                // Auto-save selection
+                saveDeviceSelection();
+            }
+            
+            function saveDeviceSelection() {
+                // Allow empty selection (will be validated on collect/generate)
+                fetch('api/entities/select', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ entity_ids: selectedEntities })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showStatus('<strong>Success!</strong> Saved ' + selectedEntities.length + ' devices for report generation.', 'success');
+                    } else {
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('<strong>Error:</strong> Failed to save selection', 'error');
+                });
+            }
+            
+            function loadAutoUpdateConfig() {
+                fetch('api/auto-update/config')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const intervalHours = data.config.interval_hours || 0;
+                            document.getElementById('autoReportSchedule').value = intervalHours;
+                        }
+                    })
+                    .catch(error => console.error('Failed to load auto-report config:', error));
+            }
+            
+            function saveAutoReportSchedule() {
+                const intervalHours = parseInt(document.getElementById('autoReportSchedule').value);
+                const enabled = intervalHours > 0;
+                
+                fetch('api/auto-update/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled, interval_hours: intervalHours })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (enabled) {
+                            showStatus('<strong>Success!</strong> Automatic report generation scheduled.', 'success');
+                        } else {
+                            showStatus('<strong>Success!</strong> Automatic report generation disabled.', 'success');
+                        }
+                    } else {
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('<strong>Error:</strong> Failed to save configuration', 'error');
+                });
+            }
+            
+            function loadReports() {
+                fetch('api/reports')
+                    .then(response => response.json())
+                    .then(data => {
+                        const container = document.getElementById('reportsList');
+                        
+                        if (data.status === 'success' && data.reports.length > 0) {
+                            container.innerHTML = '';
+                            
+                            data.reports.forEach(report => {
+                                const item = document.createElement('div');
+                                item.className = 'device-item';
+                                item.style.cursor = 'default';
+                                item.style.display = 'flex';
+                                item.style.alignItems = 'center';
+                                item.style.justifyContent = 'space-between';
+                                
+                                item.innerHTML = `
+                                    <div class="device-info" style="flex: 1; min-width: 0;">
+                                        <div class="device-name" style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="material-icons" style="font-size: 20px; color: #4CAF50;">description</span>
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${report.filename}</span>
+                                        </div>
+                                        <div class="device-id" style="display: flex; gap: 16px; margin-top: 4px;">
+                                            <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">schedule</span> ${report.created}</span>
+                                            <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">folder</span> ${report.size_kb} KB</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                                        <button class="btn" onclick="downloadSpecificReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #03a9f4;">
+                                            <span class="material-icons" style="font-size: 22px; line-height: 0;">download</span>
+                                        </button>
+                                        <button class="btn" onclick="deleteReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #f44336; box-shadow: 0 2px 6px rgba(244, 67, 54, 0.4);">
+                                            <span class="material-icons" style="font-size: 22px; line-height: 0;">delete</span>
+                                        </button>
+                                    </div>
+                                `;
+                                container.appendChild(item);
+                            });
+                        } else {
+                            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No reports generated yet</div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Failed to load reports:', error);
+                        document.getElementById('reportsList').innerHTML = 
+                            '<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load reports</div>';
+                    });
+            }
+            
+            function downloadSpecificReport(filename) {
+                window.location.href = 'api/reports/' + filename;
+            }
+            
+            function deleteReport(filename) {
+                if (!confirm(`Are you sure you want to delete ${filename}?`)) {
+                    return;
+                }
+                
+                fetch('api/reports/' + filename, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showStatus('<strong>Success!</strong> Report deleted successfully.', 'success');
+                            loadReports(); // Reload the list
+                        } else {
+                            showStatus('<strong>Error:</strong> ' + data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showStatus('<strong>Error:</strong> Failed to delete report', 'error');
+                    });
+            }
+        </script>
+    </body>
+    </html>
+    

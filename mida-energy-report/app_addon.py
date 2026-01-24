@@ -50,21 +50,72 @@ else:
     )
     logger = logging.getLogger(__name__)
 
-# Get paths - always use /share for persistence
-DATA_PATH = Path('/share/energy_reports/data')  # Always use /share for data persistence
-TEMP_OUTPUT_PATH = Path('/share/energy_reports/output')  # For charts, temp files
-PDF_OUTPUT_PATH = Path('/share/energy_reports/pdfs')  # For final PDFs
+# Get paths (container-friendly, no Supervisor required)
+ENERGY_REPORTS_BASE_PATH = os.getenv('ENERGY_REPORTS_BASE_PATH', '')
+DATA_PATH_ENV = os.getenv('DATA_PATH', '')
+TEMP_OUTPUT_PATH_ENV = os.getenv('TEMP_OUTPUT_PATH', '')
+PDF_OUTPUT_PATH_ENV = os.getenv('PDF_OUTPUT_PATH', '')
+
+
+def _resolve_paths():
+    if ENERGY_REPORTS_BASE_PATH:
+        base_path = Path(ENERGY_REPORTS_BASE_PATH)
+        data_path = Path(DATA_PATH_ENV) if DATA_PATH_ENV else base_path / "data"
+    elif DATA_PATH_ENV:
+        data_path_candidate = Path(DATA_PATH_ENV)
+        if data_path_candidate.is_absolute() and data_path_candidate.parent == Path("/") and data_path_candidate.name in ("data", "config", "share"):
+            base_path = data_path_candidate
+            data_path = base_path / "data"
+        elif data_path_candidate.name == "data":
+            base_path = data_path_candidate.parent
+            data_path = data_path_candidate
+        else:
+            base_path = data_path_candidate
+            data_path = base_path / "data"
+    elif PDF_OUTPUT_PATH_ENV:
+        base_path = Path(PDF_OUTPUT_PATH_ENV).parent
+        data_path = base_path / "data"
+    elif TEMP_OUTPUT_PATH_ENV:
+        base_path = Path(TEMP_OUTPUT_PATH_ENV).parent
+        data_path = base_path / "data"
+    else:
+        base_path = Path("/data/energy_reports")
+        data_path = base_path / "data"
+
+    temp_output_path = Path(TEMP_OUTPUT_PATH_ENV) if TEMP_OUTPUT_PATH_ENV else base_path / "output"
+    pdf_output_path = Path(PDF_OUTPUT_PATH_ENV) if PDF_OUTPUT_PATH_ENV else base_path / "pdfs"
+
+    return base_path, data_path, temp_output_path, pdf_output_path
+
+
+BASE_PATH, DATA_PATH, TEMP_OUTPUT_PATH, PDF_OUTPUT_PATH = _resolve_paths()
+os.environ["DATA_PATH"] = str(DATA_PATH)
 TEMP_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 PDF_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 DATA_PATH.mkdir(parents=True, exist_ok=True)
 
 # Home Assistant API configuration
 SUPERVISOR_TOKEN = os.getenv('SUPERVISOR_TOKEN', '')
-HA_API_URL = "http://supervisor/core/api"
-HEADERS = {
-    "Authorization": f"Bearer {SUPERVISOR_TOKEN}",
-    "Content-Type": "application/json"
-}
+HA_TOKEN = os.getenv('HA_TOKEN', '')
+HA_URL = os.getenv('HA_URL', '')
+HA_API_URL_ENV = os.getenv('HA_API_URL', '')
+
+
+def _normalize_ha_api_url():
+    if HA_API_URL_ENV:
+        base = HA_API_URL_ENV.rstrip('/')
+        return base if base.endswith('/api') else f"{base}/api"
+    if HA_URL:
+        base = HA_URL.rstrip('/')
+        return f"{base}/api"
+    return "http://supervisor/core/api"
+
+
+HA_API_URL = _normalize_ha_api_url()
+AUTH_TOKEN = HA_TOKEN or SUPERVISOR_TOKEN
+HEADERS = {"Content-Type": "application/json"}
+if AUTH_TOKEN:
+    HEADERS["Authorization"] = f"Bearer {AUTH_TOKEN}"
 
 # Data collection thread
 collection_thread = None
@@ -1659,10 +1710,13 @@ def initialize_addon():
     logger.info("=" * 60)
     logger.info("ENERGY REPORTS ADD-ON STARTING")
     logger.info("=" * 60)
+    logger.info(f"Base path: {BASE_PATH}")
     logger.info(f"Data path: {DATA_PATH}")
     logger.info(f"Temp output path: {TEMP_OUTPUT_PATH}")
     logger.info(f"PDF output path: {PDF_OUTPUT_PATH}")
+    logger.info(f"HA API URL: {HA_API_URL}")
     logger.info(f"Supervisor token available: {bool(SUPERVISOR_TOKEN)}")
+    logger.info(f"HA token available: {bool(HA_TOKEN)}")
     logger.info("=" * 60)
     
     # Start auto-update worker thread
@@ -1685,4 +1739,3 @@ if __name__ == '__main__':
     
     # Run server (development mode)
     app.run(host='0.0.0.0', port=5000, debug=False)
-

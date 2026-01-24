@@ -1,0 +1,7 @@
+{
+  "name": "Energy Reports",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": ["energy_reports"],
+  "iot_class": "local_polling"
+}
