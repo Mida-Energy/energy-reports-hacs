@@ -144,10 +144,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop)
 
-    def _register_panel(_: object | None = None) -> None:
+    async def _register_panel(_: object | None = None) -> None:
         try:
             if hasattr(frontend, "async_register_panel"):
-                frontend.async_register_panel(
+                await frontend.async_register_panel(
                     hass,
                     component_name="custom",
                     sidebar_title=PANEL_TITLE,
@@ -162,10 +162,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     require_admin=False,
                 )
             else:
-                token_suffix = (
-                    f"?token={panel_token}" if panel_token else ""
-                )
-                frontend.async_register_built_in_panel(
+                token_suffix = f"?token={panel_token}" if panel_token else ""
+                await frontend.async_register_built_in_panel(
                     hass,
                     component_name="iframe",
                     sidebar_title=PANEL_TITLE,
@@ -177,6 +175,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         except Exception as exc:
             _LOGGER.warning("Failed to register panel: %s", exc)
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _register_panel)
+    hass.bus.async_listen_once(
+        EVENT_HOMEASSISTANT_STARTED,
+        lambda event: hass.async_create_task(_register_panel(event)),
+    )
 
     return True
