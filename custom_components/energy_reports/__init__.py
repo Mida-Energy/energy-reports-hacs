@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL
+from .const import DOMAIN, PANEL_ICON, PANEL_TITLE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -137,13 +137,22 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop)
 
     try:
-        frontend.async_register_built_in_panel(
+        panel_js = Path(__file__).parent / "frontend" / "energy-reports-panel.js"
+        hass.http.register_static_path(
+            "/energy_reports/energy-reports-panel.js", str(panel_js), cache_headers=True
+        )
+        frontend.async_register_panel(
             hass,
-            component_name="iframe",
+            component_name="custom",
             sidebar_title=PANEL_TITLE,
             sidebar_icon=PANEL_ICON,
             frontend_url_path=DOMAIN,
-            config={"url": PANEL_URL},
+            config={
+                "_panel_custom": {
+                    "name": "energy-reports-panel",
+                    "module_url": "/energy_reports/energy-reports-panel.js",
+                }
+            },
             require_admin=False,
         )
     except Exception:

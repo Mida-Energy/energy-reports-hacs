@@ -161,6 +161,8 @@ class EnergyReportsIndexView(HomeAssistantView):
         paths = _get_paths(self.hass)
         html = html.replace("{{DATA_PATH}}", str(paths["data_path"]))
         html = html.replace("{{PDF_PATH}}", str(paths["pdf_path"]))
+        token = request.query.get("token", "")
+        html = html.replace("{{AUTH_TOKEN}}", token)
         return web.Response(text=html, content_type="text/html")
 
 
