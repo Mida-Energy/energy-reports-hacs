@@ -10,7 +10,7 @@ from homeassistant.helpers import config_validation as cv
 
 from homeassistant.components import frontend, history
 from homeassistant.core import HomeAssistant
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP, EVENT_HOMEASSISTANT_STARTED
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
@@ -175,9 +175,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         except Exception as exc:
             _LOGGER.warning("Failed to register panel: %s", exc)
 
-    async def _on_started(event) -> None:
-        await _register_panel_async()
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
+    await _register_panel_async()
 
     return True
