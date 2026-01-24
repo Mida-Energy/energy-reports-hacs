@@ -144,7 +144,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop)
 
-    async def _register_panel(_: object | None = None) -> None:
+    async def _register_panel_async() -> None:
         try:
             if hasattr(frontend, "async_register_panel"):
                 await frontend.async_register_panel(
@@ -177,7 +177,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     hass.bus.async_listen_once(
         EVENT_HOMEASSISTANT_STARTED,
-        lambda event: hass.async_create_task(_register_panel(event)),
+        lambda event: hass.async_add_job(_register_panel_async()),
     )
 
     return True
