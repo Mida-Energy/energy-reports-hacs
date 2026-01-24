@@ -175,9 +175,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         except Exception as exc:
             _LOGGER.warning("Failed to register panel: %s", exc)
 
-    hass.bus.async_listen_once(
-        EVENT_HOMEASSISTANT_STARTED,
-        lambda event: hass.async_add_job(_register_panel_async()),
-    )
+    async def _on_started(event) -> None:
+        await _register_panel_async()
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
 
     return True
