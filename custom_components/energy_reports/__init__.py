@@ -29,6 +29,7 @@ from .views import (
     EnergyReportsGenerateView,
     EnergyReportsHealthView,
     EnergyReportsIndexView,
+    EnergyReportsPanelJsView,
     EnergyReportsReportsItemView,
     EnergyReportsReportsView,
     EnergyReportsRootView,
@@ -59,6 +60,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     hass.http.register_view(EnergyReportsRootView(hass))
     hass.http.register_view(EnergyReportsIndexView(hass))
+    hass.http.register_view(EnergyReportsPanelJsView(hass))
     hass.http.register_view(EnergyReportsHealthView(hass))
     hass.http.register_view(EnergyReportsEntitiesView(hass))
     hass.http.register_view(EnergyReportsEntitiesSelectView(hass))
@@ -138,12 +140,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     def _register_panel(_: object | None = None) -> None:
         try:
-            panel_js = Path(__file__).parent / "frontend" / "energy-reports-panel.js"
-            hass.http.register_static_path(
-                "/energy_reports/energy-reports-panel.js",
-                str(panel_js),
-                cache_headers=True,
-            )
             frontend.async_register_panel(
                 hass,
                 component_name="custom",
@@ -153,7 +149,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 config={
                     "_panel_custom": {
                         "name": "energy-reports-panel",
-                        "module_url": "/energy_reports/energy-reports-panel.js",
+                        "module_url": "/api/energy_reports/panel.js",
                     }
                 },
                 require_admin=False,

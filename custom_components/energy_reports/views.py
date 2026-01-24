@@ -166,6 +166,20 @@ class EnergyReportsIndexView(HomeAssistantView):
         return web.Response(text=html, content_type="text/html")
 
 
+class EnergyReportsPanelJsView(HomeAssistantView):
+    url = "/api/energy_reports/panel.js"
+    name = "api:energy_reports:panel_js"
+    requires_auth = True
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+
+    async def get(self, request: web.Request) -> web.Response:
+        js_path = Path(__file__).parent / "frontend" / "energy-reports-panel.js"
+        js = js_path.read_text(encoding="utf-8")
+        return web.Response(text=js, content_type="application/javascript")
+
+
 class EnergyReportsHealthView(HomeAssistantView):
     url = "/api/energy_reports/health"
     name = "api:energy_reports:health"
