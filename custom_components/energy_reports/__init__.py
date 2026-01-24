@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import os
-import asyncio
 import logging
 from datetime import timedelta
 
@@ -12,6 +11,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.components import frontend, history
 from homeassistant.core import HomeAssistant
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PANEL_ICON, PANEL_TITLE
@@ -70,69 +70,69 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(EnergyReportsGenerateView(hass))
     hass.http.register_view(EnergyReportsAutoUpdateConfigView(hass))
 
-    async def _auto_update_worker() -> None:
-        last_run = None
-        while True:
-            try:
-                config_path = data_path / "auto_update_config.json"
-                config = _read_json(config_path, {"enabled": False, "interval_hours": 0})
-                interval_hours = config.get("interval_hours", 0)
-                enabled = config.get("enabled", False)
+    last_run = {"value": None}
 
-                if enabled and interval_hours and interval_hours > 0:
-                    now = dt_util.now()
-                    if last_run is None or (now - last_run) >= timedelta(hours=interval_hours):
-                        selected_path = data_path / "selected_entities.json"
-                        entity_ids = _read_json(selected_path, [])
-                        if entity_ids:
-                            start_time = now - timedelta(days=7)
+    async def _auto_update_worker(_: object) -> None:
+        try:
+            config_path = data_path / "auto_update_config.json"
+            config = _read_json(config_path, {"enabled": False, "interval_hours": 0})
+            interval_hours = config.get("interval_hours", 0)
+            enabled = config.get("enabled", False)
 
-                            def _get_history_sync():
-                                try:
-                                    return history.get_significant_states(
-                                        hass,
-                                        start_time,
-                                        now,
-                                        entity_ids,
-                                        True,
-                                        True,
-                                        True,
-                                        True,
-                                    )
-                                except TypeError:
-                                    return history.get_significant_states(
-                                        hass, start_time, now, entity_ids
-                                    )
+            if enabled and interval_hours and interval_hours > 0:
+                now = dt_util.now()
+                if last_run["value"] is None or (now - last_run["value"]) >= timedelta(
+                    hours=interval_hours
+                ):
+                    selected_path = data_path / "selected_entities.json"
+                    entity_ids = _read_json(selected_path, [])
+                    if entity_ids:
+                        start_time = now - timedelta(days=7)
 
-                            states_map = await hass.async_add_executor_job(_get_history_sync)
-                            history_data = _history_to_json(entity_ids, states_map)
-                            csv_file = data_path / "all.csv"
-                            await hass.async_add_executor_job(
-                                _convert_history_to_csv, history_data, csv_file
-                            )
-
-                            def _run_report():
-                                from .report_generator.src.main import ShellyEnergyReport
-
-                                analyzer = ShellyEnergyReport(
-                                    data_dir=str(data_path),
-                                    output_dir=str(output_path),
-                                    correct_timestamps=True,
+                        def _get_history_sync():
+                            try:
+                                return history.get_significant_states(
+                                    hass,
+                                    start_time,
+                                    now,
+                                    entity_ids,
+                                    True,
+                                    True,
+                                    True,
+                                    True,
                                 )
-                                analyzer.run_analysis()
+                            except TypeError:
+                                return history.get_significant_states(
+                                    hass, start_time, now, entity_ids
+                                )
 
-                            await hass.async_add_executor_job(_run_report)
-                            last_run = now
-            except Exception as exc:
-                _LOGGER.warning("Auto-update worker error: %s", exc)
+                        states_map = await hass.async_add_executor_job(_get_history_sync)
+                        history_data = _history_to_json(entity_ids, states_map)
+                        csv_file = data_path / "all.csv"
+                        await hass.async_add_executor_job(
+                            _convert_history_to_csv, history_data, csv_file
+                        )
 
-            await asyncio.sleep(300)
+                        def _run_report():
+                            from .report_generator.src.main import ShellyEnergyReport
 
-    task = hass.async_create_task(_auto_update_worker())
-    hass.data[DOMAIN]["auto_update_task"] = task
+                            analyzer = ShellyEnergyReport(
+                                data_dir=str(data_path),
+                                output_dir=str(output_path),
+                                correct_timestamps=True,
+                            )
+                            analyzer.run_analysis()
+
+                        await hass.async_add_executor_job(_run_report)
+                        last_run["value"] = now
+        except Exception as exc:
+            _LOGGER.warning("Auto-update worker error: %s", exc)
+
+    unsub = async_track_time_interval(hass, _auto_update_worker, timedelta(minutes=5))
+    hass.data[DOMAIN]["auto_update_unsub"] = unsub
 
     async def _stop(_: object) -> None:
-        task.cancel()
+        unsub()
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop)
 
