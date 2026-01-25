@@ -286,18 +286,16 @@ class EnergyReportsReportsItemView(HomeAssistantView):
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
 
-    async def get(self, request: web.Request) -> web.Response:
+    async def get(self, request: web.Request, filename: str) -> web.Response:
         paths = _get_paths(self.hass)
-        filename = request.match_info["filename"]
         pdf_file = paths["pdf_path"] / filename
         if not pdf_file.exists():
             return web.json_response({"status": "error", "message": "Report not found"}, status=404)
 
         return web.FileResponse(path=pdf_file, headers={"Content-Type": "application/pdf"})
 
-    async def delete(self, request: web.Request) -> web.Response:
+    async def delete(self, request: web.Request, filename: str) -> web.Response:
         paths = _get_paths(self.hass)
-        filename = request.match_info["filename"]
         pdf_file = paths["pdf_path"] / filename
         if not pdf_file.exists():
             return web.json_response({"status": "error", "message": "Report not found"}, status=404)
