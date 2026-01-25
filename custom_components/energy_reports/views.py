@@ -21,11 +21,15 @@ def _get_paths(hass: HomeAssistant) -> dict[str, Path]:
     return hass.data[DOMAIN]
 
 
-def _read_json(path: Path, default: Any) -> Any:
+def _read_json_sync(path: Path, default: Any) -> Any:
     if not path.exists():
         return default
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+async def _read_json(hass: HomeAssistant, path: Path, default: Any) -> Any:
+    return await hass.async_add_executor_job(_read_json_sync, path, default)
 
 
 def _write_json(path: Path, data: Any) -> None:
@@ -157,7 +161,9 @@ class EnergyReportsIndexView(HomeAssistantView):
 
     async def get(self, request: web.Request) -> web.Response:
         html_path = Path(__file__).parent / "frontend" / "index.html"
-        html = html_path.read_text(encoding="utf-8")
+        html = await self.hass.async_add_executor_job(
+            html_path.read_text, "utf-8"
+        )
         paths = _get_paths(self.hass)
         html = html.replace("{{DATA_PATH}}", str(paths["data_path"]))
         html = html.replace("{{PDF_PATH}}", str(paths["pdf_path"]))
@@ -203,7 +209,7 @@ class EnergyReportsEntitiesView(HomeAssistantView):
     async def get(self, request: web.Request) -> web.Response:
         paths = _get_paths(self.hass)
         selected_path = paths["data_path"] / "selected_entities.json"
-        selected = _read_json(selected_path, [])
+        selected = await _read_json(self.hass, selected_path, [])
 
         entities = _discover_shelly_entities(self.hass)
         return web.json_response(
@@ -223,7 +229,9 @@ class EnergyReportsEntitiesSelectView(HomeAssistantView):
         paths = _get_paths(self.hass)
         data = await request.json()
         selected_ids = data.get("entity_ids", [])
-        _write_json(paths["data_path"] / "selected_entities.json", selected_ids)
+        await self.hass.async_add_executor_job(
+            _write_json, paths["data_path"] / "selected_entities.json", selected_ids
+        )
         return web.json_response(
             {"status": "success", "message": f"Saved {len(selected_ids)} entities", "selected": selected_ids}
         )
@@ -299,7 +307,7 @@ class EnergyReportsAutoUpdateConfigView(HomeAssistantView):
     async def get(self, request: web.Request) -> web.Response:
         paths = _get_paths(self.hass)
         config_path = paths["data_path"] / "auto_update_config.json"
-        config = _read_json(config_path, {"enabled": False, "interval_hours": 0})
+        config = await _read_json(self.hass, config_path, {"enabled": False, "interval_hours": 0})
         return web.json_response({"status": "success", "config": config})
 
     async def post(self, request: web.Request) -> web.Response:
@@ -309,7 +317,9 @@ class EnergyReportsAutoUpdateConfigView(HomeAssistantView):
             "enabled": data.get("enabled", False),
             "interval_hours": data.get("interval_hours", 24),
         }
-        _write_json(paths["data_path"] / "auto_update_config.json", config)
+        await self.hass.async_add_executor_job(
+            _write_json, paths["data_path"] / "auto_update_config.json", config
+        )
         return web.json_response(
             {"status": "success", "message": "Auto-update configuration saved", "config": config}
         )
@@ -400,7 +410,7 @@ class EnergyReportsApiView(HomeAssistantView):
     async def post(self, request: web.Request) -> web.Response:
         paths = _get_paths(self.hass)
         selected_path = paths["data_path"] / "selected_entities.json"
-        entity_ids = _read_json(selected_path, [])
+        entity_ids = await _read_json(self.hass, selected_path, [])
 
         if not entity_ids:
             return web.json_response(
