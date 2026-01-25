@@ -8,7 +8,7 @@ from typing import Any
 import shutil
 
 from aiohttp import web
-from homeassistant.components.recorder import history as recorder_history
+from homeassistant.components.recorder import history as recorder_history, get_instance
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
@@ -127,14 +127,24 @@ def _history_to_json(entity_ids: list[str], states_map: dict[str, list[Any]]) ->
         history_states = states_map.get(entity_id, [])
         entity_list = []
         for state in history_states:
-            entity_list.append(
-                {
-                    "entity_id": state.entity_id,
-                    "state": state.state,
-                    "attributes": dict(state.attributes),
-                    "last_changed": state.last_changed.isoformat(),
-                }
-            )
+            if isinstance(state, dict):
+                entity_list.append(
+                    {
+                        "entity_id": state.get("entity_id", entity_id),
+                        "state": state.get("state"),
+                        "attributes": dict(state.get("attributes", {})),
+                        "last_changed": state.get("last_changed"),
+                    }
+                )
+            else:
+                entity_list.append(
+                    {
+                        "entity_id": state.entity_id,
+                        "state": state.state,
+                        "attributes": dict(state.attributes),
+                        "last_changed": state.last_changed.isoformat(),
+                    }
+                )
         history_data.append(entity_list)
     return history_data
 
@@ -446,7 +456,8 @@ class EnergyReportsApiView(HomeAssistantView):
                 )
 
         try:
-            states_map = await self.hass.async_add_executor_job(_get_history_sync)
+            recorder = get_instance(self.hass)
+            states_map = await recorder.async_add_executor_job(_get_history_sync)
         except Exception as exc:
             return web.json_response(
                 {"status": "error", "message": f"History fetch failed: {exc}"},
