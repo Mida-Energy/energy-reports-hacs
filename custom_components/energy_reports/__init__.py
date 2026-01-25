@@ -9,7 +9,7 @@ import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
 from homeassistant.components import frontend
-from homeassistant.components.recorder import history as recorder_history
+from homeassistant.components.recorder import history as recorder_history, get_instance
 from homeassistant.core import HomeAssistant
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers.event import async_track_time_interval
@@ -78,7 +78,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     async def _auto_update_worker(_: object) -> None:
         try:
             config_path = data_path / "auto_update_config.json"
-            config = _read_json(config_path, {"enabled": False, "interval_hours": 0})
+            config = await _read_json(
+                hass, config_path, {"enabled": False, "interval_hours": 0}
+            )
             interval_hours = config.get("interval_hours", 0)
             enabled = config.get("enabled", False)
 
@@ -88,7 +90,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     hours=interval_hours
                 ):
                     selected_path = data_path / "selected_entities.json"
-                    entity_ids = _read_json(selected_path, [])
+                    entity_ids = await _read_json(hass, selected_path, [])
                     if entity_ids:
                         start_time = now - timedelta(days=7)
 
@@ -109,7 +111,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                                     hass, start_time, now, entity_ids
                                 )
 
-                        states_map = await hass.async_add_executor_job(_get_history_sync)
+                        recorder = get_instance(hass)
+                        states_map = await recorder.async_add_executor_job(_get_history_sync)
                         history_data = _history_to_json(entity_ids, states_map)
                         csv_file = data_path / "all.csv"
                         await hass.async_add_executor_job(
