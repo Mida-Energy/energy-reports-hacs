@@ -2,7 +2,7 @@
   "domain": "energy_reports",
   "name": "Energy Reports",
   "codeowners": ["@Mida-Energy"],
-  "dependencies": ["frontend", "history", "http"],
+  "dependencies": ["frontend", "http", "recorder"],
   "documentation": "https://github.com/Mida-Energy/energy-reports",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Mida-Energy/energy-reports/issues",

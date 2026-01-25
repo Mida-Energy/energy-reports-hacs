@@ -8,7 +8,7 @@ from typing import Any
 import shutil
 
 from aiohttp import web
-from homeassistant.components import history
+from homeassistant.components.recorder import history as recorder_history
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
@@ -413,22 +413,36 @@ class EnergyReportsApiView(HomeAssistantView):
         end_time = dt_util.now()
         start_time = end_time - timedelta(days=days)
 
+        if "recorder" not in self.hass.config.components:
+            return web.json_response(
+                {"status": "error", "message": "Recorder integration is not loaded"},
+                status=500,
+            )
+
         def _get_history_sync() -> dict[str, list[Any]]:
             try:
-                return history.get_significant_states(
+                return recorder_history.get_significant_states(
                     self.hass,
                     start_time,
                     end_time,
-                    entity_ids,
-                    True,
-                    True,
-                    True,
-                    True,
+                    entity_ids=entity_ids,
+                    include_start_time_state=True,
+                    significant_changes_only=True,
+                    minimal_response=True,
                 )
             except TypeError:
-                return history.get_significant_states(self.hass, start_time, end_time, entity_ids)
+                return recorder_history.get_significant_states(
+                    self.hass, start_time, end_time, entity_ids
+                )
 
-        states_map = await self.hass.async_add_executor_job(_get_history_sync)
+        try:
+            states_map = await self.hass.async_add_executor_job(_get_history_sync)
+        except Exception as exc:
+            return web.json_response(
+                {"status": "error", "message": f"History fetch failed: {exc}"},
+                status=500,
+            )
+
         history_data = _history_to_json(entity_ids, states_map)
 
         csv_file = paths["data_path"] / "all.csv"

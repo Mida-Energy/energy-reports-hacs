@@ -8,7 +8,8 @@ from datetime import timedelta
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
-from homeassistant.components import frontend, history
+from homeassistant.components import frontend
+from homeassistant.components.recorder import history as recorder_history
 from homeassistant.core import HomeAssistant
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers.event import async_track_time_interval
@@ -93,7 +94,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
                         def _get_history_sync():
                             try:
-                                return history.get_significant_states(
+                                return recorder_history.get_significant_states(
                                     hass,
                                     start_time,
                                     now,
@@ -104,7 +105,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                                     True,
                                 )
                             except TypeError:
-                                return history.get_significant_states(
+                                return recorder_history.get_significant_states(
                                     hass, start_time, now, entity_ids
                                 )
 
