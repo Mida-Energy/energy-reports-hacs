@@ -8,7 +8,19 @@ class EnergyReportsPanel extends HTMLElement {
       return;
     }
     this._root = this.attachShadow({ mode: "open" });
+    if (!this._hass) {
+      this._hass = this._resolveParentHass();
+    }
     this._init();
+  }
+
+  _resolveParentHass() {
+    try {
+      const root = window.parent?.document?.querySelector("home-assistant");
+      return root ? root.hass : null;
+    } catch (err) {
+      return null;
+    }
   }
 
   async _init() {
@@ -57,6 +69,9 @@ class EnergyReportsPanel extends HTMLElement {
   }
 
   async _callApi(method, path, data) {
+    if (!this._hass) {
+      this._hass = this._resolveParentHass();
+    }
     if (!this._hass) {
       throw new Error("Home Assistant not ready");
     }
