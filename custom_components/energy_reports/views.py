@@ -177,7 +177,11 @@ class EnergyReportsIndexView(HomeAssistantView):
         paths = _get_paths(self.hass)
         html = html.replace("{{DATA_PATH}}", str(paths["data_path"]))
         html = html.replace("{{PDF_PATH}}", str(paths["pdf_path"]))
-        return web.Response(text=html, content_type="text/html")
+        return web.Response(
+            text=html,
+            content_type="text/html",
+            headers={"Cache-Control": "no-store"},
+        )
 
 
 class EnergyReportsUiView(HomeAssistantView):
@@ -196,7 +200,11 @@ class EnergyReportsUiView(HomeAssistantView):
         paths = _get_paths(self.hass)
         html = html.replace("{{DATA_PATH}}", str(paths["data_path"]))
         html = html.replace("{{PDF_PATH}}", str(paths["pdf_path"]))
-        return web.Response(text=html, content_type="text/html")
+        return web.Response(
+            text=html,
+            content_type="text/html",
+            headers={"Cache-Control": "no-store"},
+        )
 
 
 class EnergyReportsPanelJsView(HomeAssistantView):
@@ -212,7 +220,11 @@ class EnergyReportsPanelJsView(HomeAssistantView):
         js = await self.hass.async_add_executor_job(
             js_path.read_text, "utf-8"
         )
-        return web.Response(text=js, content_type="application/javascript")
+        return web.Response(
+            text=js,
+            content_type="application/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
 
 
 class EnergyReportsHealthView(HomeAssistantView):
