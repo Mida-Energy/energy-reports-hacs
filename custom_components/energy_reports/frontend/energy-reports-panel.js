@@ -254,20 +254,20 @@ class EnergyReportsPanel extends HTMLElement {
           item.innerHTML = `
             <div class="device-info" style="flex: 1; min-width: 0;">
               <div class="device-name" style="display: flex; align-items: center; gap: 8px;">
-                <span class="material-icons" style="font-size: 20px; color: #4CAF50;">description</span>
+                <ha-icon icon="mdi:file-document-outline" style="--mdc-icon-size: 20px; color: #4CAF50;"></ha-icon>
                 <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${report.filename}</span>
               </div>
               <div class="device-id" style="display: flex; gap: 16px; margin-top: 4px;">
-                <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">schedule</span> ${report.created}</span>
-                <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">folder</span> ${report.size_kb} KB</span>
+                <span><ha-icon icon="mdi:clock-outline" style="--mdc-icon-size: 14px; vertical-align: middle;"></ha-icon> ${report.created}</span>
+                <span><ha-icon icon="mdi:folder-outline" style="--mdc-icon-size: 14px; vertical-align: middle;"></ha-icon> ${report.size_kb} KB</span>
               </div>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
               <button class="btn" onclick="downloadSpecificReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #03a9f4;">
-                <span class="material-icons" style="font-size: 22px; line-height: 0;">download</span>
+                <ha-icon icon="mdi:download" style="--mdc-icon-size: 22px; line-height: 0;"></ha-icon>
               </button>
               <button class="btn" onclick="deleteReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #f44336; box-shadow: 0 2px 6px rgba(244, 67, 54, 0.4);">
-                <span class="material-icons" style="font-size: 22px; line-height: 0;">delete</span>
+                <ha-icon icon="mdi:delete" style="--mdc-icon-size: 22px; line-height: 0;"></ha-icon>
               </button>
             </div>
           `;
