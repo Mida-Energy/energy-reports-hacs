@@ -355,6 +355,41 @@
                     }, 5000);
                 }
             }
+
+            const API_BASE = '/api/energy_reports';
+            function apiPath(path) {
+                return `${API_BASE}/${String(path).replace(/^\/+/, '')}`;
+            }
+
+            async function apiCall(method, path, data) {
+                if (window.__energyReportsPanel && typeof window.__energyReportsPanel._callApi === 'function') {
+                    return window.__energyReportsPanel._callApi(
+                        method,
+                        `energy_reports/${String(path).replace(/^\/+/, '')}`,
+                        data
+                    );
+                }
+
+                const options = {
+                    method,
+                    credentials: 'include',
+                    headers: {},
+                };
+
+                if (data !== undefined) {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(data);
+                }
+
+                const resp = await fetch(apiPath(path), options);
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}: ${resp.statusText}${text ? ' - ' + text.slice(0, 200) : ''}`);
+                }
+
+                return text ? JSON.parse(text) : {};
+            }
             
             function generateReportComplete() {
                 const btn = event.target;
@@ -370,19 +405,13 @@
                 // Step 1: Collect data
                 showStatus(`<strong>Step 1/2:</strong> Fetching data from Home Assistant (last ${days} days)...`, 'info');
                 
-                fetch('collect-data', { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ days: parseInt(days) })
-                })
-                .then(response => response.json())
+                apiCall('POST', 'collect-data', { days: parseInt(days, 10) })
                 .then(data => {
                     if (data.status === 'success') {
                         // Step 2: Generate report
                         showStatus('<strong>Step 2/2:</strong> Generating PDF report... Please wait.', 'info');
                         
-                        return fetch('generate', { method: 'POST' })
-                            .then(response => response.json())
+                        return apiCall('POST', 'generate', {})
                             .then(genData => {
                                 btn.disabled = false;
                                 btn.innerHTML = originalHTML;
@@ -411,21 +440,8 @@
             }
             
             function loadDevices() {
-                fetch('api/entities')
-                    .then(response => {
-                        console.log('Response status:', response.status);
-                        console.log('Response headers:', response.headers);
-                        
-                        // Check HTTP status before parsing
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                        
-                        return response.text();
-                    })
-                    .then(text => {
-                        console.log('Raw response:', text);
-                        const data = JSON.parse(text);
+                apiCall('GET', 'api/entities')
+                    .then(data => {
                         if (data.status === 'success') {
                             availableEntities = data.entities;
                             selectedEntities = data.selected || [];
@@ -483,12 +499,7 @@
             
             function saveDeviceSelection() {
                 // Allow empty selection (will be validated on collect/generate)
-                fetch('api/entities/select', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ entity_ids: selectedEntities })
-                })
-                .then(response => response.json())
+                apiCall('POST', 'api/entities/select', { entity_ids: selectedEntities })
                 .then(data => {
                     if (data.status === 'success') {
                         showStatus('<strong>Success!</strong> Saved ' + selectedEntities.length + ' devices for report generation.', 'success');
@@ -502,8 +513,7 @@
             }
             
             function loadAutoUpdateConfig() {
-                fetch('api/auto-update/config')
-                    .then(response => response.json())
+                apiCall('GET', 'api/auto-update/config')
                     .then(data => {
                         if (data.status === 'success') {
                             const intervalHours = data.config.interval_hours || 0;
@@ -517,12 +527,7 @@
                 const intervalHours = parseInt(document.getElementById('autoReportSchedule').value);
                 const enabled = intervalHours > 0;
                 
-                fetch('api/auto-update/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled: enabled, interval_hours: intervalHours })
-                })
-                .then(response => response.json())
+                apiCall('POST', 'api/auto-update/config', { enabled: enabled, interval_hours: intervalHours })
                 .then(data => {
                     if (data.status === 'success') {
                         if (enabled) {
@@ -540,8 +545,7 @@
             }
             
             function loadReports() {
-                fetch('api/reports')
-                    .then(response => response.json())
+                apiCall('GET', 'api/reports')
                     .then(data => {
                         const container = document.getElementById('reportsList');
                         
@@ -590,7 +594,7 @@
             }
             
             function downloadSpecificReport(filename) {
-                window.location.href = 'api/reports/' + filename;
+                window.location.href = apiPath('api/reports/' + filename);
             }
             
             function deleteReport(filename) {
@@ -598,8 +602,7 @@
                     return;
                 }
                 
-                fetch('api/reports/' + filename, { method: 'DELETE' })
-                    .then(response => response.json())
+                apiCall('DELETE', 'api/reports/' + filename)
                     .then(data => {
                         if (data.status === 'success') {
                             showStatus('<strong>Success!</strong> Report deleted successfully.', 'success');
