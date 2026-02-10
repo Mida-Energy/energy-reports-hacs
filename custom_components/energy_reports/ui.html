@@ -330,8 +330,6 @@
                 }
             }
 
-            window.__energyReportsAuthToken = "{{AUTH_TOKEN}}";
-
             const API_BASE = '/api/energy_reports';
             function apiPath(path) {
                 return `${API_BASE}/${String(path).replace(/^\/+/, '')}`;
@@ -346,14 +344,24 @@
                     );
                 }
 
+                let token = null;
+                try {
+                    const hass = window.parent?.document?.querySelector('home-assistant')?.hass;
+                    if (hass?.auth?.getAccessToken) {
+                        token = await hass.auth.getAccessToken();
+                    }
+                } catch (error) {
+                    token = null;
+                }
+
                 const options = {
                     method,
                     credentials: 'include',
                     headers: {},
                 };
 
-                if (window.__energyReportsAuthToken) {
-                    options.headers['Authorization'] = `Bearer ${window.__energyReportsAuthToken}`;
+                if (token) {
+                    options.headers['Authorization'] = `Bearer ${token}`;
                 }
 
                 if (data !== undefined) {
