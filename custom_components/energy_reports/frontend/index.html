@@ -34,9 +34,9 @@
                 display: flex;
                 align-items: center;
             }
-            h1 .material-icons {
+            h1 ha-icon {
                 margin-right: 12px;
-                font-size: 32px;
+                --mdc-icon-size: 32px;
                 color: #03a9f4;
             }
             .subtitle {
@@ -62,9 +62,9 @@
                 display: flex;
                 align-items: center;
             }
-            .card-title .material-icons {
+            .card-title ha-icon {
                 margin-right: 12px;
-                font-size: 24px;
+                --mdc-icon-size: 24px;
                 color: #03a9f4;
             }
             .info-item {
@@ -108,9 +108,9 @@
                 box-shadow: 0 2px 6px rgba(3, 169, 244, 0.4);
                 position: relative;
             }
-            .btn .material-icons {
+            .btn ha-icon {
                 margin-right: 8px;
-                font-size: 20px;
+                --mdc-icon-size: 20px;
                 line-height: 1;
                 display: flex;
                 align-items: center;
@@ -234,13 +234,13 @@
     <body>
         <div class="container">
             <div class="header">
-                <h1><span class="material-icons">assessment</span>Energy Reports</h1>
+                <h1><ha-icon icon="mdi:chart-line"></ha-icon>Energy Reports</h1>
                 <p class="subtitle">Generate and manage your energy consumption reports</p>
             </div>
             
             <div class="card">
                 <div class="card-title">
-                    <span class="material-icons">settings</span>
+                    <ha-icon icon="mdi:cog"></ha-icon>
                     Configuration
                 </div>
                 <div class="info-item">
@@ -274,7 +274,7 @@
 
             <div class="card">
                 <div class="card-title">
-                    <span class="material-icons">devices</span>
+                    <ha-icon icon="mdi:devices"></ha-icon>
                     Device Selection & Report Generation
                 </div>
                 <p style="color: #9b9b9b; font-size: 14px; margin-bottom: 16px;">
@@ -292,7 +292,7 @@
                 
                 <div style="display: flex; justify-content: center; margin-top: 16px;">
                     <button class="btn btn-success" onclick="generateReportComplete()" style="padding: 16px 32px; font-size: 16px; font-weight: 500;">
-                        <span class="material-icons" style="margin-right: 8px;">play_arrow</span>
+                        <ha-icon icon="mdi:play" style="margin-right: 8px;"></ha-icon>
                         Generate Report
                     </button>
                 </div>
@@ -302,7 +302,7 @@
 
             <div class="card">
                 <div class="card-title">
-                    <span class="material-icons">history</span>
+                    <ha-icon icon="mdi:history"></ha-icon>
                     Reports History
                 </div>
                 <p style="color: #9b9b9b; font-size: 14px; margin-bottom: 16px;">
@@ -411,7 +411,7 @@
                 const days = document.getElementById('timeRange').value;
                 
                 btn.disabled = true;
-                btn.innerHTML = '<span class="material-icons" style="margin-right: 8px;">hourglass_empty</span><span>Processing...</span><span class="spinner"></span>';
+                btn.innerHTML = '<ha-icon icon="mdi:hourglass" style="margin-right: 8px;"></ha-icon><span>Processing...</span><span class="spinner"></span>';
                 
                 // Clear any previous status message
                 document.getElementById('status').style.display = 'none';
@@ -577,20 +577,20 @@
                                 item.innerHTML = `
                                     <div class="device-info" style="flex: 1; min-width: 0;">
                                         <div class="device-name" style="display: flex; align-items: center; gap: 8px;">
-                                            <span class="material-icons" style="font-size: 20px; color: #4CAF50;">description</span>
+                                            <ha-icon icon="mdi:file-document-outline" style="--mdc-icon-size: 20px; color: #4CAF50;"></ha-icon>
                                             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${report.filename}</span>
                                         </div>
                                         <div class="device-id" style="display: flex; gap: 16px; margin-top: 4px;">
-                                            <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">schedule</span> ${report.created}</span>
-                                            <span><span class="material-icons" style="font-size: 14px; vertical-align: middle;">folder</span> ${report.size_kb} KB</span>
+                                            <span><ha-icon icon="mdi:clock-outline" style="--mdc-icon-size: 14px; vertical-align: middle;"></ha-icon> ${report.created}</span>
+                                            <span><ha-icon icon="mdi:folder-outline" style="--mdc-icon-size: 14px; vertical-align: middle;"></ha-icon> ${report.size_kb} KB</span>
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                                         <button class="btn" onclick="downloadSpecificReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #03a9f4;">
-                                            <span class="material-icons" style="font-size: 22px; line-height: 0;">download</span>
+                                            <ha-icon icon="mdi:download" style="--mdc-icon-size: 22px; line-height: 0;"></ha-icon>
                                         </button>
                                         <button class="btn" onclick="deleteReport('${report.filename}')" style="padding: 0; width: 44px; height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; background: #f44336; box-shadow: 0 2px 6px rgba(244, 67, 54, 0.4);">
-                                            <span class="material-icons" style="font-size: 22px; line-height: 0;">delete</span>
+                                            <ha-icon icon="mdi:delete" style="--mdc-icon-size: 22px; line-height: 0;"></ha-icon>
                                         </button>
                                     </div>
                                 `;
