@@ -168,7 +168,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     sidebar_title=PANEL_TITLE,
                     sidebar_icon=PANEL_ICON,
                     frontend_url_path=DOMAIN,
-                    config={"url": "/api/energy_reports/"},
+                    config={"url": "/api/energy_reports/ui"},
                     require_admin=False,
                 )
         except Exception as exc:
