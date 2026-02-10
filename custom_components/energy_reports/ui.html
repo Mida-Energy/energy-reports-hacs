@@ -316,14 +316,6 @@
             </div>
         </div>
         <script>
-            let availableEntities = [];
-            let selectedEntities = [];
-            
-            // Load devices on page load
-            loadDevices();
-            loadAutoUpdateConfig();
-            loadReports();
-            
             function showStatus(message, type) {
                 const statusDiv = document.getElementById('status');
                 statusDiv.className = 'status ' + type;
@@ -372,6 +364,14 @@
 
                 return text ? JSON.parse(text) : {};
             }
+
+            let availableEntities = [];
+            let selectedEntities = [];
+            
+            // Load devices on page load
+            loadDevices();
+            loadAutoUpdateConfig();
+            loadReports();
             
             function generateReportComplete() {
                 const btn = event.target;
