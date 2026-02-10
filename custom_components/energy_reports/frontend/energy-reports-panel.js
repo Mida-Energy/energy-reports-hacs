@@ -1,10 +1,6 @@
 class EnergyReportsPanel extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
-    this._token = hass?.auth?.data?.accessToken || "";
-    if (this._iframe && this._token) {
-      this._iframe.src = `/api/energy_reports/?token=${encodeURIComponent(this._token)}`;
-    }
   }
 
   connectedCallback() {
@@ -28,8 +24,7 @@ class EnergyReportsPanel extends HTMLElement {
     `;
 
     this._iframe = document.createElement("iframe");
-    const token = this._token || "";
-    this._iframe.src = `/api/energy_reports/?token=${encodeURIComponent(token)}`;
+    this._iframe.src = "/api/energy_reports/";
 
     this._root.append(style, this._iframe);
   }

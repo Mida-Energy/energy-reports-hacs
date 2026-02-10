@@ -37,14 +37,7 @@ Generate professional PDF reports from your Shelly sensors directly in Home Assi
 - This is a **HACS custom integration** (not an add-on).
 - No Supervisor/Ingress: the UI is served internally by Home Assistant.
 - Each HA instance generates its own reports (ideal for multiple instances).
-- If the sidebar item does not appear, add a manual panel:
-  ```yaml
-  panel_iframe:
-    energy_reports:
-      title: Energy Reports
-      icon: mdi:chart-line
-      url: /api/energy_reports/
-  ```
+- Authentication uses the **existing Home Assistant session**. No manual tokens required.
 
 ## Troubleshooting
 
@@ -57,6 +50,13 @@ Generate professional PDF reports from your Shelly sensors directly in Home Assi
 
 - Verify there is history data for the selected sensors.
 - Check that `/config/energy_reports/data/all.csv` exists.
+
+## Manual test checklist
+
+1. Open Home Assistant and click **Energy Reports** in the sidebar.
+2. Verify device list loads without asking for a token.
+3. Click **Collect Data** and confirm it completes without 401/403.
+4. Click **Generate Report** and download a PDF from **Reports History**.
 
 ---
 
