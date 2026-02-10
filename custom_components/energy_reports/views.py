@@ -183,7 +183,7 @@ class EnergyReportsIndexView(HomeAssistantView):
 class EnergyReportsUiView(HomeAssistantView):
     url = "/api/energy_reports/ui"
     name = "api:energy_reports:ui"
-    requires_auth = True
+    requires_auth = False
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
@@ -202,14 +202,16 @@ class EnergyReportsUiView(HomeAssistantView):
 class EnergyReportsPanelJsView(HomeAssistantView):
     url = "/api/energy_reports/panel.js"
     name = "api:energy_reports:panel_js"
-    requires_auth = True
+    requires_auth = False
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
 
     async def get(self, request: web.Request) -> web.Response:
         js_path = Path(__file__).parent / "frontend" / "energy-reports-panel.js"
-        js = js_path.read_text(encoding="utf-8")
+        js = await self.hass.async_add_executor_job(
+            js_path.read_text, "utf-8"
+        )
         return web.Response(text=js, content_type="application/javascript")
 
 
