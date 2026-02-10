@@ -35,6 +35,7 @@ from .views import (
     EnergyReportsReportsView,
     EnergyReportsRootView,
     EnergyReportsStatusView,
+    EnergyReportsUiView,
     _convert_history_to_csv,
     _history_to_json,
     _read_json,
@@ -61,6 +62,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     hass.http.register_view(EnergyReportsRootView(hass))
     hass.http.register_view(EnergyReportsIndexView(hass))
+    hass.http.register_view(EnergyReportsUiView(hass))
     hass.http.register_view(EnergyReportsPanelJsView(hass))
     hass.http.register_view(EnergyReportsHealthView(hass))
     hass.http.register_view(EnergyReportsEntitiesView(hass))

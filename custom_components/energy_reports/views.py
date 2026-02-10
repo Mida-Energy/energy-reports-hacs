@@ -180,6 +180,25 @@ class EnergyReportsIndexView(HomeAssistantView):
         return web.Response(text=html, content_type="text/html")
 
 
+class EnergyReportsUiView(HomeAssistantView):
+    url = "/api/energy_reports/ui"
+    name = "api:energy_reports:ui"
+    requires_auth = True
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+
+    async def get(self, request: web.Request) -> web.Response:
+        html_path = Path(__file__).parent / "frontend" / "index.html"
+        html = await self.hass.async_add_executor_job(
+            html_path.read_text, "utf-8"
+        )
+        paths = _get_paths(self.hass)
+        html = html.replace("{{DATA_PATH}}", str(paths["data_path"]))
+        html = html.replace("{{PDF_PATH}}", str(paths["pdf_path"]))
+        return web.Response(text=html, content_type="text/html")
+
+
 class EnergyReportsPanelJsView(HomeAssistantView):
     url = "/api/energy_reports/panel.js"
     name = "api:energy_reports:panel_js"
