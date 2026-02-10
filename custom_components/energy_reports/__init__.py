@@ -156,7 +156,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     config={
                         "_panel_custom": {
                             "name": "energy-reports-panel",
-                            "module_url": "/api/energy_reports/panel.js?v=1",
+                            "module_url": "/api/energy_reports/panel.js?v=2",
                         }
                     },
                     require_admin=False,
@@ -164,11 +164,16 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             else:
                 frontend.async_register_built_in_panel(
                     hass,
-                    component_name="iframe",
+                    component_name="custom",
                     sidebar_title=PANEL_TITLE,
                     sidebar_icon=PANEL_ICON,
                     frontend_url_path=DOMAIN,
-                    config={"url": "/api/energy_reports/ui"},
+                    config={
+                        "_panel_custom": {
+                            "name": "energy-reports-panel",
+                            "module_url": "/api/energy_reports/panel.js?v=2",
+                        }
+                    },
                     require_admin=False,
                 )
         except Exception as exc:
