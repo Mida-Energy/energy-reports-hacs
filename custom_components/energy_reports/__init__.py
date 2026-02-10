@@ -146,33 +146,25 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     async def _register_panel_async() -> None:
         try:
-            if hasattr(frontend, "async_register_panel"):
-                await frontend.async_register_panel(
-                    hass,
-                    component_name="custom",
-                    sidebar_title=PANEL_TITLE,
-                    sidebar_icon=PANEL_ICON,
-                    frontend_url_path=DOMAIN,
-                    config={
-                        "_panel_custom": {
-                            "name": "energy-reports-panel",
-                            "module_url": "/api/energy_reports/panel.js",
-                        }
-                    },
-                    require_admin=False,
-                )
-            else:
-                frontend.async_register_built_in_panel(
-                    hass,
-                    component_name="iframe",
-                    sidebar_title=PANEL_TITLE,
-                    sidebar_icon=PANEL_ICON,
-                    frontend_url_path=DOMAIN,
-                    config={"url": "/api/energy_reports/ui"},
-                    require_admin=False,
-                )
+            if not hasattr(frontend, "async_register_panel"):
+                raise RuntimeError("frontend.async_register_panel not available")
+
+            await frontend.async_register_panel(
+                hass,
+                component_name="custom",
+                sidebar_title=PANEL_TITLE,
+                sidebar_icon=PANEL_ICON,
+                frontend_url_path=DOMAIN,
+                config={
+                    "_panel_custom": {
+                        "name": "energy-reports-panel",
+                        "module_url": "/api/energy_reports/panel.js?v=1",
+                    }
+                },
+                require_admin=False,
+            )
         except Exception as exc:
-            _LOGGER.warning("Failed to register panel: %s", exc)
+            _LOGGER.warning("Failed to register custom panel: %s", exc)
 
     await _register_panel_async()
 

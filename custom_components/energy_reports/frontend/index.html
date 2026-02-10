@@ -328,7 +328,7 @@
                 };
                 return originalFetch(url, nextOptions).then((response) => {
                     if (response.status === 401 || response.status === 403) {
-                        showStatus('<strong>Non autorizzato:</strong> assicurati di essere loggato in Home Assistant.', 'error');
+                        showStatus('<strong>Unauthorized:</strong> make sure you are logged in to Home Assistant.', 'error');
                         throw new Error('Unauthorized');
                     }
                     return response;
