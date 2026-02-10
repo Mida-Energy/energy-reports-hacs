@@ -73,46 +73,20 @@ class EnergyReportsPanel extends HTMLElement {
       this._hass = this._resolveParentHass();
     }
     if (!this._hass) {
-      throw new Error("Home Assistant non pronto");
+      throw new Error("Home Assistant not ready");
     }
 
-    let token = null;
     try {
-      token = await this._hass.auth.getAccessToken();
+      return await this._hass.callApi(method, path, data);
     } catch (err) {
-      token = null;
-    }
-
-    const options = {
-      method,
-      headers: {},
-      credentials: "include",
-    };
-
-    if (token) {
-      options.headers.Authorization = `Bearer ${token}`;
-    }
-
-    if (data !== undefined) {
-      options.headers["Content-Type"] = "application/json";
-      options.body = JSON.stringify(data);
-    }
-
-    const resp = await fetch(`/api/${path}`, options);
-    const text = await resp.text();
-
-    if (!resp.ok) {
-      if (resp.status === 401 || resp.status === 403) {
+      if (err?.status === 401 || err?.status === 403) {
         this._showStatus(
-          "<strong>Non autorizzato:</strong> assicurati di essere loggato in Home Assistant.",
+          "<strong>Unauthorized:</strong> make sure you are logged in to Home Assistant.",
           "error"
         );
       }
-      const message = text ? text.slice(0, 200) : resp.statusText;
-      throw new Error(message || "Non autorizzato");
+      throw err;
     }
-
-    return text ? JSON.parse(text) : {};
   }
 
   async generateReportComplete() {
@@ -123,14 +97,14 @@ class EnergyReportsPanel extends HTMLElement {
     btn.disabled = true;
     btn.innerHTML = `${originalHTML} <span class="spinner"></span>`;
     this._showStatus(
-      `<strong>Step 1/2:</strong> Recupero dati da Home Assistant (ultimi ${days} giorni)...`,
+      `<strong>Step 1/2:</strong> Fetching data from Home Assistant (last ${days} days)...`,
       "info"
     );
 
     try {
       await this._callApi("POST", "energy_reports/collect-data", { days: parseInt(days, 10) });
       this._showStatus(
-        "<strong>Step 2/2:</strong> Generazione report PDF... Attendi.",
+        "<strong>Step 2/2:</strong> Generating PDF report... Please wait.",
         "info"
       );
       const genData = await this._callApi("POST", "energy_reports/generate", {});
@@ -140,18 +114,18 @@ class EnergyReportsPanel extends HTMLElement {
 
       if (genData.status === "success") {
         this._showStatus(
-          `<strong>Successo!</strong> Report generato (${genData.pdf_size_kb} KB). Vedi la cronologia report qui sotto.`,
+          `<strong>Success!</strong> Report generated successfully (${genData.pdf_size_kb} KB). Check Reports History below.`,
           "success"
         );
         await this.loadReports();
       } else {
-        this._showStatus(`<strong>Errore:</strong> ${genData.message}`, "error");
+        this._showStatus(`<strong>Error:</strong> ${genData.message}`, "error");
       }
     } catch (error) {
       btn.disabled = false;
       btn.innerHTML = originalHTML;
       this._qs("#status").style.display = "none";
-      this._showStatus(`<strong>Errore di rete:</strong> ${error}`, "error");
+      this._showStatus(`<strong>Network Error:</strong> ${error}`, "error");
     }
   }
 
@@ -163,12 +137,12 @@ class EnergyReportsPanel extends HTMLElement {
         this.selectedEntities = data.selected || [];
         this.renderDeviceList();
       } else {
-        this._qs("#deviceList").innerHTML = `<div style="text-align: center; padding: 20px; color: #e57373;">Errore: ${
-          data.message || "Errore sconosciuto"
+        this._qs("#deviceList").innerHTML = `<div style="text-align: center; padding: 20px; color: #e57373;">Error: ${
+          data.message || "Unknown error"
         }</div>`;
       }
     } catch (error) {
-      this._qs("#deviceList").innerHTML = `<div style="text-align: center; padding: 20px; color: #e57373;">Impossibile caricare i dispositivi: ${error.message}</div>`;
+      this._qs("#deviceList").innerHTML = `<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load devices: ${error.message}</div>`;
     }
   }
 
@@ -176,7 +150,7 @@ class EnergyReportsPanel extends HTMLElement {
     const container = this._qs("#deviceList");
     if (this.availableEntities.length === 0) {
       container.innerHTML =
-        '<div style="text-align: center; padding: 20px; color: #9b9b9b;">Nessun dispositivo Shelly trovato</div>';
+        '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No Shelly devices found</div>';
       return;
     }
 
@@ -217,14 +191,14 @@ class EnergyReportsPanel extends HTMLElement {
       });
       if (data.status === "success") {
         this._showStatus(
-          `<strong>Successo!</strong> Salvati ${this.selectedEntities.length} dispositivi per la generazione report.`,
+          `<strong>Success!</strong> Saved ${this.selectedEntities.length} devices for report generation.`,
           "success"
         );
       } else {
-        this._showStatus(`<strong>Errore:</strong> ${data.message}`, "error");
+        this._showStatus(`<strong>Error:</strong> ${data.message}`, "error");
       }
     } catch (error) {
-      this._showStatus("<strong>Errore:</strong> Salvataggio selezione fallito", "error");
+      this._showStatus("<strong>Error:</strong> Failed to save selection", "error");
     }
   }
 
@@ -251,15 +225,15 @@ class EnergyReportsPanel extends HTMLElement {
       if (data.status === "success") {
         this._showStatus(
           enabled
-            ? "<strong>Successo!</strong> Generazione automatica programmata."
-            : "<strong>Successo!</strong> Generazione automatica disattivata.",
+            ? "<strong>Success!</strong> Automatic report generation scheduled."
+            : "<strong>Success!</strong> Automatic report generation disabled.",
           "success"
         );
       } else {
-        this._showStatus(`<strong>Errore:</strong> ${data.message}`, "error");
+        this._showStatus(`<strong>Error:</strong> ${data.message}`, "error");
       }
     } catch (error) {
-      this._showStatus("<strong>Errore:</strong> Salvataggio configurazione fallito", "error");
+      this._showStatus("<strong>Error:</strong> Failed to save configuration", "error");
     }
   }
 
@@ -301,11 +275,11 @@ class EnergyReportsPanel extends HTMLElement {
         });
       } else {
         container.innerHTML =
-          '<div style="text-align: center; padding: 20px; color: #9b9b9b;">Nessun report generato</div>';
+          '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No reports generated yet</div>';
       }
     } catch (error) {
       this._qs("#reportsList").innerHTML =
-        '<div style="text-align: center; padding: 20px; color: #e57373;">Impossibile caricare i report</div>';
+        '<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load reports</div>';
     }
   }
 
@@ -320,13 +294,13 @@ class EnergyReportsPanel extends HTMLElement {
     try {
       const data = await this._callApi("DELETE", `energy_reports/api/reports/${filename}`);
       if (data.status === "success") {
-        this._showStatus("<strong>Successo!</strong> Report eliminato.", "success");
+        this._showStatus("<strong>Success!</strong> Report deleted successfully.", "success");
         await this.loadReports();
       } else {
-        this._showStatus(`<strong>Errore:</strong> ${data.message}`, "error");
+        this._showStatus(`<strong>Error:</strong> ${data.message}`, "error");
       }
     } catch (error) {
-      this._showStatus("<strong>Errore:</strong> Eliminazione report fallita", "error");
+      this._showStatus("<strong>Error:</strong> Failed to delete report", "error");
     }
   }
 }

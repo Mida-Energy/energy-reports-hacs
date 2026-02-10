@@ -348,6 +348,8 @@
                 }
             }
 
+            window.__energyReportsAuthToken = "{{AUTH_TOKEN}}";
+
             const API_BASE = '/api/energy_reports';
             function apiPath(path) {
                 return `${API_BASE}/${String(path).replace(/^\/+/, '')}`;
@@ -367,6 +369,10 @@
                     credentials: 'include',
                     headers: {},
                 };
+
+                if (window.__energyReportsAuthToken) {
+                    options.headers['Authorization'] = `Bearer ${window.__energyReportsAuthToken}`;
+                }
 
                 if (data !== undefined) {
                     options.headers['Content-Type'] = 'application/json';
@@ -418,24 +424,24 @@
                                 document.getElementById('status').style.display = 'none';
                                 
                                 if (genData.status === 'success') {
-                                    showStatus('<strong>Successo!</strong> Report generato (' + genData.pdf_size_kb + ' KB). Vedi la cronologia report qui sotto.', 'success');
+                                    showStatus('<strong>Success!</strong> Report generated successfully (' + genData.pdf_size_kb + ' KB). Check Reports History below.', 'success');
                                     loadReports();
                                 } else {
-                                    showStatus('<strong>Errore:</strong> ' + genData.message, 'error');
+                                    showStatus('<strong>Error:</strong> ' + genData.message, 'error');
                                 }
                             });
                     } else {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
                         document.getElementById('status').style.display = 'none';
-                        showStatus('<strong>Errore:</strong> ' + data.message, 'error');
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
                     }
                 })
                 .catch(error => {
                     btn.disabled = false;
                     btn.innerHTML = originalHTML;
                     document.getElementById('status').style.display = 'none';
-                    showStatus('<strong>Errore di rete:</strong> ' + error, 'error');
+                    showStatus('<strong>Network Error:</strong> ' + error, 'error');
                 });
             }
             
@@ -448,20 +454,20 @@
                             renderDeviceList();
                         } else {
                             document.getElementById('deviceList').innerHTML = 
-                                '<div style="text-align: center; padding: 20px; color: #e57373;">Errore: ' + (data.message || 'Errore sconosciuto') + '</div>';
+                                '<div style="text-align: center; padding: 20px; color: #e57373;">Error: ' + (data.message || 'Unknown error') + '</div>';
                         }
                     })
                     .catch(error => {
-                        console.error('Impossibile caricare i dispositivi:', error);
+                        console.error('Failed to load devices:', error);
                         document.getElementById('deviceList').innerHTML = 
-                            '<div style="text-align: center; padding: 20px; color: #e57373;">Impossibile caricare i dispositivi: ' + error.message + '</div>';
+                            '<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load devices: ' + error.message + '</div>';
                     });
             }
             
             function renderDeviceList() {
                 const container = document.getElementById('deviceList');
                 if (availableEntities.length === 0) {
-                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9b9b9b;">Nessun dispositivo Shelly trovato</div>';
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No Shelly devices found</div>';
                     return;
                 }
                 
@@ -502,13 +508,13 @@
                 apiCall('POST', 'api/entities/select', { entity_ids: selectedEntities })
                 .then(data => {
                     if (data.status === 'success') {
-                        showStatus('<strong>Successo!</strong> Salvati ' + selectedEntities.length + ' dispositivi per la generazione report.', 'success');
+                        showStatus('<strong>Success!</strong> Saved ' + selectedEntities.length + ' devices for report generation.', 'success');
                     } else {
-                        showStatus('<strong>Errore:</strong> ' + data.message, 'error');
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
                     }
                 })
                 .catch(error => {
-                    showStatus('<strong>Errore:</strong> Salvataggio selezione fallito', 'error');
+                    showStatus('<strong>Error:</strong> Failed to save selection', 'error');
                 });
             }
             
@@ -520,7 +526,7 @@
                             document.getElementById('autoReportSchedule').value = intervalHours;
                         }
                     })
-                    .catch(error => console.error('Impossibile caricare la configurazione auto-report:', error));
+                    .catch(error => console.error('Failed to load auto-report config:', error));
             }
             
             function saveAutoReportSchedule() {
@@ -531,16 +537,16 @@
                 .then(data => {
                     if (data.status === 'success') {
                         if (enabled) {
-                            showStatus('<strong>Successo!</strong> Generazione automatica programmata.', 'success');
+                            showStatus('<strong>Success!</strong> Automatic report generation scheduled.', 'success');
                         } else {
-                            showStatus('<strong>Successo!</strong> Generazione automatica disattivata.', 'success');
+                            showStatus('<strong>Success!</strong> Automatic report generation disabled.', 'success');
                         }
                     } else {
-                        showStatus('<strong>Errore:</strong> ' + data.message, 'error');
+                        showStatus('<strong>Error:</strong> ' + data.message, 'error');
                     }
                 })
                 .catch(error => {
-                    showStatus('<strong>Errore:</strong> Salvataggio configurazione fallito', 'error');
+                    showStatus('<strong>Error:</strong> Failed to save configuration', 'error');
                 });
             }
             
@@ -583,13 +589,13 @@
                                 container.appendChild(item);
                             });
                         } else {
-                            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9b9b9b;">Nessun report generato</div>';
+                            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No reports generated yet</div>';
                         }
                     })
                     .catch(error => {
-                        console.error('Impossibile caricare i report:', error);
+                        console.error('Failed to load reports:', error);
                         document.getElementById('reportsList').innerHTML = 
-                            '<div style="text-align: center; padding: 20px; color: #e57373;">Impossibile caricare i report</div>';
+                            '<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load reports</div>';
                     });
             }
             
@@ -605,14 +611,14 @@
                 apiCall('DELETE', 'api/reports/' + filename)
                     .then(data => {
                         if (data.status === 'success') {
-                            showStatus('<strong>Successo!</strong> Report eliminato.', 'success');
+                            showStatus('<strong>Success!</strong> Report deleted successfully.', 'success');
                             loadReports(); // Reload the list
                         } else {
-                            showStatus('<strong>Errore:</strong> ' + data.message, 'error');
+                            showStatus('<strong>Error:</strong> ' + data.message, 'error');
                         }
                     })
                     .catch(error => {
-                        showStatus('<strong>Errore:</strong> Eliminazione report fallita', 'error');
+                        showStatus('<strong>Error:</strong> Failed to delete report', 'error');
                     });
             }
         </script>

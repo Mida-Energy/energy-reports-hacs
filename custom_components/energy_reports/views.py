@@ -21,6 +21,16 @@ def _get_paths(hass: HomeAssistant) -> dict[str, Path]:
     return hass.data[DOMAIN]
 
 
+def _build_access_token(hass: HomeAssistant, request: web.Request) -> str:
+    user = request.get("hass_user")
+    if not user:
+        return ""
+    try:
+        return hass.auth.async_create_access_token(user)
+    except Exception:
+        return ""
+
+
 def _read_json_sync(path: Path, default: Any) -> Any:
     if not path.exists():
         return default
@@ -177,6 +187,7 @@ class EnergyReportsIndexView(HomeAssistantView):
         paths = _get_paths(self.hass)
         html = html.replace("{{DATA_PATH}}", str(paths["data_path"]))
         html = html.replace("{{PDF_PATH}}", str(paths["pdf_path"]))
+        html = html.replace("{{AUTH_TOKEN}}", _build_access_token(self.hass, request))
         return web.Response(
             text=html,
             content_type="text/html",
@@ -187,7 +198,7 @@ class EnergyReportsIndexView(HomeAssistantView):
 class EnergyReportsUiView(HomeAssistantView):
     url = "/api/energy_reports/ui"
     name = "api:energy_reports:ui"
-    requires_auth = False
+    requires_auth = True
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
@@ -200,6 +211,7 @@ class EnergyReportsUiView(HomeAssistantView):
         paths = _get_paths(self.hass)
         html = html.replace("{{DATA_PATH}}", str(paths["data_path"]))
         html = html.replace("{{PDF_PATH}}", str(paths["pdf_path"]))
+        html = html.replace("{{AUTH_TOKEN}}", _build_access_token(self.hass, request))
         return web.Response(
             text=html,
             content_type="text/html",
