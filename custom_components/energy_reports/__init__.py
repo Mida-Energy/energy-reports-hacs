@@ -156,7 +156,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     config={
                         "_panel_custom": {
                             "name": "energy-reports-panel",
-                            "module_url": "/api/energy_reports/panel.js?v=5",
+                            "module_url": "/api/energy_reports/panel.js?v=6",
                         }
                     },
                     require_admin=False,
@@ -171,7 +171,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     config={
                         "_panel_custom": {
                             "name": "energy-reports-panel",
-                            "module_url": "/api/energy_reports/panel.js?v=5",
+                            "module_url": "/api/energy_reports/panel.js?v=6",
                         }
                     },
                     require_admin=False,
