@@ -26,6 +26,7 @@ class EnergyReportsPanel extends HTMLElement {
   async _init() {
     const template = await this._loadTemplate();
     this._root.innerHTML = template;
+    this._replaceMaterialIcons();
     window.__energyReportsPanel = this;
     window.generateReportComplete = () => this.generateReportComplete();
     window.toggleDevice = (entityId) => this.toggleDevice(entityId);
@@ -59,6 +60,37 @@ class EnergyReportsPanel extends HTMLElement {
 
   _qs(selector) {
     return this._root.querySelector(selector);
+  }
+
+  _replaceMaterialIcons() {
+    const iconMap = {
+      assessment: "mdi:chart-line",
+      settings: "mdi:cog",
+      devices: "mdi:devices",
+      play_arrow: "mdi:play",
+      history: "mdi:history",
+      hourglass_empty: "mdi:hourglass",
+      description: "mdi:file-document-outline",
+      schedule: "mdi:clock-outline",
+      folder: "mdi:folder-outline",
+      download: "mdi:download",
+      delete: "mdi:delete",
+    };
+
+    this._root.querySelectorAll("span.material-icons").forEach((node) => {
+      const key = node.textContent?.trim();
+      const icon = iconMap[key];
+      if (!icon) {
+        return;
+      }
+      const ha = document.createElement("ha-icon");
+      ha.setAttribute("icon", icon);
+      const style = node.getAttribute("style");
+      if (style) {
+        ha.setAttribute("style", style.replace("font-size", "--mdc-icon-size"));
+      }
+      node.replaceWith(ha);
+    });
   }
 
   _showStatus(message, type) {
