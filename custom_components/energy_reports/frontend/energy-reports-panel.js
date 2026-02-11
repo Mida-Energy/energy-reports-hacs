@@ -31,6 +31,8 @@ class EnergyReportsPanel extends HTMLElement {
     window.generateReportComplete = () => this.generateReportComplete();
     window.toggleDevice = (entityId) => this.toggleDevice(entityId);
     window.saveAutoReportSchedule = () => this.saveAutoReportSchedule();
+    window.saveCleanupConfig = () => this.saveCleanupConfig();
+    window.runCleanupNow = () => this.runCleanupNow();
     window.downloadSpecificReport = (filename) => this.downloadSpecificReport(filename);
     window.deleteReport = (filename) => this.deleteReport(filename);
 
@@ -39,6 +41,7 @@ class EnergyReportsPanel extends HTMLElement {
 
     await this.loadDevices();
     await this.loadAutoUpdateConfig();
+    await this.loadCleanupConfig();
     await this.loadReports();
   }
 
@@ -269,6 +272,55 @@ class EnergyReportsPanel extends HTMLElement {
     }
   }
 
+  async loadCleanupConfig() {
+    try {
+      const data = await this._callApi("GET", "energy_reports/api/cleanup/config");
+      if (data.status === "success") {
+        const retentionDays = data.config.retention_days || 0;
+        this._qs("#cleanupRetentionDays").value = retentionDays;
+      }
+    } catch (error) {
+      // No-op
+    }
+  }
+
+  async saveCleanupConfig() {
+    const retentionDays = parseInt(this._qs("#cleanupRetentionDays").value, 10);
+    const enabled = retentionDays > 0;
+    try {
+      const data = await this._callApi("POST", "energy_reports/api/cleanup/config", {
+        enabled,
+        retention_days: retentionDays,
+      });
+      if (data.status === "success") {
+        this._showStatus(
+          enabled
+            ? "<strong>Success!</strong> Auto-cleanup enabled."
+            : "<strong>Success!</strong> Auto-cleanup disabled.",
+          "success"
+        );
+      } else {
+        this._showStatus(`<strong>Error:</strong> ${data.message}`, "error");
+      }
+    } catch (error) {
+      this._showStatus("<strong>Error:</strong> Failed to save cleanup configuration", "error");
+    }
+  }
+
+  async runCleanupNow() {
+    try {
+      const data = await this._callApi("POST", "energy_reports/api/cleanup/run", {});
+      if (data.status === "success") {
+        this._showStatus(`<strong>Success!</strong> ${data.message}`, "success");
+        await this.loadReports();
+      } else {
+        this._showStatus(`<strong>Error:</strong> ${data.message}`, "error");
+      }
+    } catch (error) {
+      this._showStatus("<strong>Error:</strong> Cleanup failed", "error");
+    }
+  }
+
   async loadReports() {
     try {
       const data = await this._callApi("GET", "energy_reports/api/reports");
@@ -305,13 +357,16 @@ class EnergyReportsPanel extends HTMLElement {
           `;
           container.appendChild(item);
         });
+        this._replaceMaterialIcons();
       } else {
         container.innerHTML =
           '<div style="text-align: center; padding: 20px; color: #9b9b9b;">No reports generated yet</div>';
+        this._replaceMaterialIcons();
       }
     } catch (error) {
       this._qs("#reportsList").innerHTML =
         '<div style="text-align: center; padding: 20px; color: #e57373;">Failed to load reports</div>';
+      this._replaceMaterialIcons();
     }
   }
 

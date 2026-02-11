@@ -39,6 +39,36 @@ def _write_json(path: Path, data: Any) -> None:
         json.dump(data, handle)
 
 
+def _cleanup_reports_sync(pdf_path: Path, retention_days: int) -> dict[str, Any]:
+    if retention_days <= 0:
+        return {"removed": 0, "kept": 0}
+    if not pdf_path.exists():
+        return {"removed": 0, "kept": 0}
+
+    threshold_ts = (dt_util.now() - timedelta(days=retention_days)).timestamp()
+    removed = 0
+    kept = 0
+
+    for pdf in pdf_path.glob("*.pdf"):
+        try:
+            if pdf.stat().st_mtime < threshold_ts:
+                pdf.unlink()
+                removed += 1
+            else:
+                kept += 1
+        except Exception:
+            kept += 1
+
+    return {"removed": removed, "kept": kept}
+
+
+async def _cleanup_reports(hass: HomeAssistant, retention_days: int) -> dict[str, Any]:
+    paths = _get_paths(hass)
+    return await hass.async_add_executor_job(
+        _cleanup_reports_sync, paths["pdf_path"], retention_days
+    )
+
+
 def _convert_history_to_csv(history_data: list[list[dict[str, Any]]], output_file: Path) -> bool:
     try:
         all_rows: list[dict[str, Any]] = []
@@ -362,6 +392,64 @@ class EnergyReportsAutoUpdateConfigView(HomeAssistantView):
         )
         return web.json_response(
             {"status": "success", "message": "Auto-update configuration saved", "config": config}
+        )
+
+
+class EnergyReportsCleanupConfigView(HomeAssistantView):
+    url = "/api/energy_reports/api/cleanup/config"
+    name = "api:energy_reports:cleanup_config"
+    requires_auth = True
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+
+    async def get(self, request: web.Request) -> web.Response:
+        paths = _get_paths(self.hass)
+        config_path = paths["data_path"] / "cleanup_config.json"
+        config = await _read_json(
+            self.hass, config_path, {"enabled": False, "retention_days": 0}
+        )
+        return web.json_response({"status": "success", "config": config})
+
+    async def post(self, request: web.Request) -> web.Response:
+        paths = _get_paths(self.hass)
+        data = await request.json()
+        retention_days = int(data.get("retention_days", 0) or 0)
+        enabled = bool(data.get("enabled", False)) and retention_days > 0
+        config = {
+            "enabled": enabled,
+            "retention_days": retention_days if enabled else 0,
+        }
+        await self.hass.async_add_executor_job(
+            _write_json, paths["data_path"] / "cleanup_config.json", config
+        )
+        return web.json_response(
+            {"status": "success", "message": "Cleanup configuration saved", "config": config}
+        )
+
+
+class EnergyReportsCleanupRunView(HomeAssistantView):
+    url = "/api/energy_reports/api/cleanup/run"
+    name = "api:energy_reports:cleanup_run"
+    requires_auth = True
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+
+    async def post(self, request: web.Request) -> web.Response:
+        paths = _get_paths(self.hass)
+        config_path = paths["data_path"] / "cleanup_config.json"
+        config = await _read_json(
+            self.hass, config_path, {"enabled": False, "retention_days": 0}
+        )
+        retention_days = int(config.get("retention_days", 0) or 0)
+        result = await _cleanup_reports(self.hass, retention_days)
+        return web.json_response(
+            {
+                "status": "success",
+                "message": f"Cleanup done. Removed {result['removed']} reports.",
+                "result": result,
+            }
         )
 
 

@@ -24,6 +24,8 @@ CONFIG_SCHEMA = vol.Schema({DOMAIN: cv.empty_config_schema}, extra=vol.ALLOW_EXT
 from .views import (
     EnergyReportsApiView,
     EnergyReportsAutoUpdateConfigView,
+    EnergyReportsCleanupConfigView,
+    EnergyReportsCleanupRunView,
     EnergyReportsDownloadLatestView,
     EnergyReportsEntitiesSelectView,
     EnergyReportsEntitiesView,
@@ -37,6 +39,7 @@ from .views import (
     EnergyReportsStatusView,
     EnergyReportsUiView,
     _convert_history_to_csv,
+    _cleanup_reports,
     _history_to_json,
     _read_json,
 )
@@ -74,8 +77,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(EnergyReportsApiView(hass))
     hass.http.register_view(EnergyReportsGenerateView(hass))
     hass.http.register_view(EnergyReportsAutoUpdateConfigView(hass))
+    hass.http.register_view(EnergyReportsCleanupConfigView(hass))
+    hass.http.register_view(EnergyReportsCleanupRunView(hass))
 
     last_run = {"value": None}
+    last_cleanup = {"value": None}
 
     async def _auto_update_worker(_: object) -> None:
         try:
@@ -85,6 +91,13 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             )
             interval_hours = config.get("interval_hours", 0)
             enabled = config.get("enabled", False)
+
+            cleanup_path = data_path / "cleanup_config.json"
+            cleanup = await _read_json(
+                hass, cleanup_path, {"enabled": False, "retention_days": 0}
+            )
+            cleanup_enabled = cleanup.get("enabled", False)
+            retention_days = cleanup.get("retention_days", 0)
 
             if enabled and interval_hours and interval_hours > 0:
                 now = dt_util.now()
@@ -133,6 +146,14 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
                         await hass.async_add_executor_job(_run_report)
                         last_run["value"] = now
+
+            if cleanup_enabled and retention_days and retention_days > 0:
+                now = dt_util.now()
+                if last_cleanup["value"] is None or (now - last_cleanup["value"]) >= timedelta(
+                    hours=6
+                ):
+                    await _cleanup_reports(hass, int(retention_days))
+                    last_cleanup["value"] = now
         except Exception as exc:
             _LOGGER.warning("Auto-update worker error: %s", exc)
 
@@ -156,7 +177,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     config={
                         "_panel_custom": {
                             "name": "energy-reports-panel",
-                            "module_url": "/api/energy_reports/panel.js?v=6",
+                            "module_url": "/api/energy_reports/panel.js?v=8",
                         }
                     },
                     require_admin=False,
@@ -171,7 +192,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     config={
                         "_panel_custom": {
                             "name": "energy-reports-panel",
-                            "module_url": "/api/energy_reports/panel.js?v=6",
+                            "module_url": "/api/energy_reports/panel.js?v=8",
                         }
                     },
                     require_admin=False,
