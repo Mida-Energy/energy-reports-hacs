@@ -39,6 +39,7 @@ from .views import (
     EnergyReportsStatusView,
     EnergyReportsUiView,
     _convert_history_to_csv,
+    _sync_pdfs,
     _cleanup_reports,
     _history_to_json,
     _read_json,
@@ -145,6 +146,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                             analyzer.run_analysis()
 
                         await hass.async_add_executor_job(_run_report)
+                        await _sync_pdfs(hass, output_path, pdf_path)
                         last_run["value"] = now
 
             if cleanup_enabled and retention_days and retention_days > 0:

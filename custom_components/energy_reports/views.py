@@ -39,6 +39,27 @@ def _write_json(path: Path, data: Any) -> None:
         json.dump(data, handle)
 
 
+def _sync_pdfs_sync(output_path: Path, pdf_path: Path) -> int:
+    if not output_path.exists():
+        return 0
+
+    pdf_path.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for pdf in output_path.rglob("*.pdf"):
+        try:
+            target = pdf_path / pdf.name
+            shutil.copy2(pdf, target)
+            copied += 1
+        except Exception:
+            continue
+
+    return copied
+
+
+async def _sync_pdfs(hass: HomeAssistant, output_path: Path, pdf_path: Path) -> int:
+    return await hass.async_add_executor_job(_sync_pdfs_sync, output_path, pdf_path)
+
+
 def _cleanup_reports_sync(pdf_path: Path, retention_days: int) -> dict[str, Any]:
     if retention_days <= 0:
         return {"removed": 0, "kept": 0}
@@ -637,13 +658,7 @@ class EnergyReportsGenerateView(HomeAssistantView):
 
         await self.hass.async_add_executor_job(_run_report)
 
-        general_pdf = output_path / "generale" / "report_generale.pdf"
-        if general_pdf.exists():
-            target = pdf_path / "report_generale.pdf"
-            try:
-                shutil.copy2(general_pdf, target)
-            except Exception:
-                pass
+        await _sync_pdfs(self.hass, output_path, pdf_path)
 
         device_pdfs = list(pdf_path.glob("report_*.pdf"))
         if not device_pdfs:
