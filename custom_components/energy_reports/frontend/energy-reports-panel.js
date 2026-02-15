@@ -133,13 +133,29 @@ class EnergyReportsPanel extends HTMLElement {
     }
   }
 
+  _getAuthTokenSync() {
+    if (!this._hass?.auth) {
+      return null;
+    }
+    if (this._hass.auth.accessToken) {
+      return this._hass.auth.accessToken;
+    }
+    if (this._hass.auth.data?.accessToken) {
+      return this._hass.auth.data.accessToken;
+    }
+    return null;
+  }
+
   async generateReportComplete(event) {
     const btn = this._qs("#generateReportBtn") || event?.target;
     if (!btn) {
       this._showStatus("<strong>Error:</strong> Generate button not found.", "error");
       return;
     }
-    const originalHTML = btn.innerHTML;
+    const originalHTML = btn.dataset.originalHtml || btn.innerHTML;
+    if (!btn.dataset.originalHtml) {
+      btn.dataset.originalHtml = originalHTML;
+    }
     const days = this._qs("#timeRange").value;
 
     btn.disabled = true;
@@ -158,7 +174,7 @@ class EnergyReportsPanel extends HTMLElement {
       );
       const genData = await this._callApi("POST", "energy_reports/generate", {});
       btn.disabled = false;
-      btn.innerHTML = originalHTML;
+      btn.innerHTML = btn.dataset.originalHtml || originalHTML;
       this._qs("#status").style.display = "none";
 
       if (genData.status === "success") {
@@ -172,7 +188,7 @@ class EnergyReportsPanel extends HTMLElement {
       }
     } catch (error) {
       btn.disabled = false;
-      btn.innerHTML = originalHTML;
+      btn.innerHTML = btn.dataset.originalHtml || originalHTML;
       this._qs("#status").style.display = "none";
       this._showStatus(`<strong>Network Error:</strong> ${error}`, "error");
     }
@@ -393,7 +409,10 @@ class EnergyReportsPanel extends HTMLElement {
         throw new Error("Home Assistant not ready");
       }
 
-      const token = await this._hass.auth.getAccessToken();
+      const token = this._getAuthTokenSync();
+      if (!token) {
+        throw new Error("Missing auth token");
+      }
       const resp = await fetch(`/api/energy_reports/api/reports/${filename}`, {
         method: "GET",
         headers: {
