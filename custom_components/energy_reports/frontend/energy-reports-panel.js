@@ -143,6 +143,7 @@ class EnergyReportsPanel extends HTMLElement {
     const days = this._qs("#timeRange").value;
 
     btn.disabled = true;
+    btn.querySelectorAll(".spinner").forEach((node) => node.remove());
     btn.innerHTML = `${originalHTML} <span class="spinner"></span>`;
     this._showStatus(
       `<strong>Step 1/2:</strong> Fetching data from Home Assistant (last ${days} days)...`,
@@ -383,8 +384,40 @@ class EnergyReportsPanel extends HTMLElement {
     }
   }
 
-  downloadSpecificReport(filename) {
-    window.location.href = `/api/energy_reports/api/reports/${filename}`;
+  async downloadSpecificReport(filename) {
+    try {
+      if (!this._hass) {
+        this._hass = this._resolveParentHass();
+      }
+      if (!this._hass) {
+        throw new Error("Home Assistant not ready");
+      }
+
+      const token = await this._hass.auth.getAccessToken();
+      const resp = await fetch(`/api/energy_reports/api/reports/${filename}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
+
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      }
+
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      this._showStatus(`<strong>Error:</strong> Download failed (${error})`, "error");
+    }
   }
 
   async deleteReport(filename) {

@@ -429,6 +429,7 @@
                 const days = document.getElementById('timeRange').value;
                 
                 btn.disabled = true;
+                btn.querySelectorAll(".spinner").forEach(node => node.remove());
                 btn.innerHTML = '<ha-icon icon="mdi:hourglass" style="margin-right: 8px;"></ha-icon><span>Processing...</span><span class="spinner"></span>';
                 
                 // Clear any previous status message
