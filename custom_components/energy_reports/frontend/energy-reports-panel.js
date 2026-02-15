@@ -43,6 +43,15 @@ class EnergyReportsPanel extends HTMLElement {
     await this.loadAutoUpdateConfig();
     await this.loadCleanupConfig();
     await this.loadReports();
+
+    const generateBtn = this._qs("#generateReportBtn");
+    if (generateBtn && !generateBtn.__energyReportsBound) {
+      generateBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.generateReportComplete(event);
+      });
+      generateBtn.__energyReportsBound = true;
+    }
   }
 
   async _loadTemplate() {
@@ -124,8 +133,12 @@ class EnergyReportsPanel extends HTMLElement {
     }
   }
 
-  async generateReportComplete() {
-    const btn = this._qs("#generateReportBtn");
+  async generateReportComplete(event) {
+    const btn = this._qs("#generateReportBtn") || event?.target;
+    if (!btn) {
+      this._showStatus("<strong>Error:</strong> Generate button not found.", "error");
+      return;
+    }
     const originalHTML = btn.innerHTML;
     const days = this._qs("#timeRange").value;
 
