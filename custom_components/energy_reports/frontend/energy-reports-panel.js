@@ -44,14 +44,6 @@ class EnergyReportsPanel extends HTMLElement {
     await this.loadCleanupConfig();
     await this.loadReports();
 
-    const generateBtn = this._qs("#generateReportBtn");
-    if (generateBtn && !generateBtn.__energyReportsBound) {
-      generateBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        this.generateReportComplete(event);
-      });
-      generateBtn.__energyReportsBound = true;
-    }
   }
 
   async _loadTemplate() {

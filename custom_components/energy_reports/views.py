@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 import csv
 import json
+import re
 from pathlib import Path
 from typing import Any
 import shutil
@@ -60,6 +61,26 @@ async def _sync_pdfs(hass: HomeAssistant, output_path: Path, pdf_path: Path) -> 
     return await hass.async_add_executor_job(_sync_pdfs_sync, output_path, pdf_path)
 
 
+_REPORT_TS_RE = re.compile(r"_(\d{8})_(\d{6})\.pdf$", re.IGNORECASE)
+
+
+def _report_timestamp(pdf: Path) -> float:
+    """Best effort timestamp: prefer report timestamp from filename, fallback to mtime."""
+    match = _REPORT_TS_RE.search(pdf.name)
+    if match:
+        try:
+            parsed = datetime.strptime(
+                f"{match.group(1)}{match.group(2)}", "%Y%m%d%H%M%S"
+            )
+            return parsed.timestamp()
+        except Exception:
+            pass
+    try:
+        return pdf.stat().st_mtime
+    except Exception:
+        return 0.0
+
+
 def _cleanup_reports_sync(pdf_path: Path, retention_days: int) -> dict[str, Any]:
     if retention_days <= 0:
         return {"removed": 0, "kept": 0}
@@ -69,18 +90,20 @@ def _cleanup_reports_sync(pdf_path: Path, retention_days: int) -> dict[str, Any]
     threshold_ts = (dt_util.now() - timedelta(days=retention_days)).timestamp()
     removed = 0
     kept = 0
+    removed_files: list[str] = []
 
     for pdf in pdf_path.glob("*.pdf"):
         try:
-            if pdf.stat().st_mtime < threshold_ts:
+            if _report_timestamp(pdf) < threshold_ts:
                 pdf.unlink()
                 removed += 1
+                removed_files.append(pdf.name)
             else:
                 kept += 1
         except Exception:
             kept += 1
 
-    return {"removed": removed, "kept": kept}
+    return {"removed": removed, "kept": kept, "removed_files": removed_files}
 
 
 async def _cleanup_reports(hass: HomeAssistant, retention_days: int) -> dict[str, Any]:
